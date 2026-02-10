@@ -38,6 +38,17 @@
             ]
           },
           {
+            "group": "Playbook",
+            "pages": [
+              "playbook/index",
+              "playbook/strategy",
+              "playbook/monitoring",
+              "playbook/decisions-in-practice",
+              "playbook/running-meetings",
+              "playbook/tracking-commitments"
+            ]
+          },
+          {
             "group": "Domain Model",
             "pages": [
               "domain/schema",
