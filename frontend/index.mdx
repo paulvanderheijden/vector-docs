@@ -9,32 +9,60 @@ This section covers the technical architecture and implementation details of the
 
 | Layer | Technology |
 |---|---|
-| **Framework** | React with TypeScript |
-| **Routing** | React Router |
-| **UI Components** | shadcn/ui (Radix + Tailwind CSS) |
+| **Framework** | React 19 with TypeScript |
+| **Routing** | React Router 7 |
+| **UI Components** | shadcn/ui (Radix + Tailwind CSS 4) |
 | **Data Tables** | TanStack React Table |
+| **Rich Text Editor** | TipTap (with tiptap-markdown for serialization) |
 | **Drag & Drop** | @dnd-kit |
-| **Build** | Vite |
+| **Icons** | Lucide React |
+| **Build** | Vite 7 |
+
+## Project structure
+
+```
+src/
+├── App.tsx              # Shell: sidebar + sticky header + scroll area + Outlet
+├── main.tsx             # React Router config (all routes)
+├── components/
+│   ├── ui/              # shadcn primitives (button, badge, data-table, etc.)
+│   └── *.tsx            # Shared feature components (18 total)
+├── pages/               # One file per screen (13 total)
+├── hooks/               # usePageHeader, use-mobile
+└── lib/
+    ├── mock-data.ts     # Decisions, commitments, circles, sessions, people
+    ├── projects-store.ts # Initiatives, projects, teams (separate store)
+    └── utils.ts         # cn() classname helper
+```
 
 ## Design principles
 
 - **Match Linear's density** — data-dense, keyboard-friendly, fast
 - **Light mode only** (V1)
 - **shadcn Figma kit** as the design source of truth
+- **Inline editing** — titles, summaries, and properties are editable in place (InlineText + PropertySelect)
+- **Consistent page headers** — every page injects its header via `usePageHeader` hook into the App shell's sticky header area
+
+## Key architecture decisions
+
+- **No global state library** — pages use local `useState` with mock data imports. Property overrides are tracked per-page via a `Record<string, string>` pattern (`get`/`set` helpers).
+- **Two data stores** — `mock-data.ts` for decisions/commitments/circles/sessions, `projects-store.ts` for initiatives/projects/teams. These will converge when the backend is connected.
+- **Page header via Outlet context** — pages don't render their own headers. Instead they call `usePageHeader()` which passes header JSX up to the App shell via React Router's Outlet context. This keeps the sticky header outside the scroll area.
+- **Detail sidebar is per-page** — each detail page renders its own fixed-position `<aside>`. There is no shared DetailSidebar wrapper component; only the inner `SidebarSection` and `PropertyRow` primitives are shared.
 
 ## Sections
 
 <CardGroup cols={2}>
   <Card title="Screens" icon="monitor" href="/frontend/screens">
-    Overview of all screens and their purpose.
+    All 14 routes and their screen descriptions.
   </Card>
   <Card title="Page Component Trees" icon="sitemap" href="/frontend/page-trees">
-    Per-page nested component structure showing how shared components compose into each screen.
+    Per-page nested component hierarchy for all 13 screens.
   </Card>
   <Card title="Component Inventory" icon="puzzle-piece" href="/frontend/component-inventory">
-    Canonical list of every shared component, its purpose, props, and which pages use it.
+    Every shared component with props, purpose, and usage locations.
   </Card>
   <Card title="Components & Patterns" icon="code" href="/frontend/components">
-    Core component details and UI patterns used across the app.
+    Core component APIs and UI patterns used across the app.
   </Card>
 </CardGroup>
