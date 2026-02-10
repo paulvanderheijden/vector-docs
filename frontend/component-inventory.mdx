@@ -242,19 +242,6 @@ Inline property picker. Clickable trigger opens a popover with options. Each opt
 
 **Used in:** DecisionDetail (status, owner), InitiativeDetail (status, health, owner, target), ProjectDetail (health, visibility, owner)
 
-### EscalateDialog
-
-`src/components/EscalateDialog.tsx`
-
-Modal dialog for escalating or delegating a decision. Shows decision statement, target circle/person selector, and reason textarea.
-
-| Prop | Type | Description |
-|---|---|---|
-| `decisionStatement` | `string` | The decision being escalated/delegated |
-| `mode` | `"escalate"` / `"delegate"` | Which action |
-
-**Used in:** DecisionDetail (header actions)
-
 ### MarkdownEditor
 
 `src/components/MarkdownEditor.tsx`
@@ -281,8 +268,7 @@ These are standard shadcn/ui components. Not documented individually here, but t
 | `Avatar` | Person display throughout the app |
 | `Button` | Actions, filters, toggles |
 | `Popover` | Filter/Display dropdowns, PropertySelect, PersonSelector, icon picker |
-| `Select` | Filter dropdowns (health, team, owner), EscalateDialog, invite selector |
-| `Dialog` | EscalateDialog |
+| `Select` | Filter dropdowns (health, team, owner), invite selector |
 | `Sidebar*` | AppSidebar |
 | `Collapsible` | AppSidebar circle sections, DetailSidebar sections |
 | `ScrollArea` | App shell main content area |
