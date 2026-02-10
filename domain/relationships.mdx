@@ -1,0 +1,65 @@
+---
+title: "Relationships"
+description: "How entities connect in the Vector data model."
+---
+
+This page maps the relationships between all entities in Vector. Understanding these connections is key to understanding how the system fits together.
+
+## Structural relationships
+
+| Relationship | Cardinality | Notes |
+|---|---|---|
+| Initiative → Project | 1 to many | A project belongs to exactly one initiative |
+| Person ↔ Team | many to many | People can be on multiple teams |
+| Project ↔ Team | many to many | Teams can be involved in multiple projects (signal, not ownership) |
+| Initiative ↔ Person (subscribers) | many to many | For restricted visibility |
+| Project ↔ Person (subscribers) | many to many | For restricted visibility |
+
+## Decision system
+
+| Relationship | Cardinality | Notes |
+|---|---|---|
+| Circle → Decision | 1 to many | A decision lives in exactly one circle at a time |
+| Person → Decision (owner) | 1 to many | A decision must have exactly one owner |
+| Person → Decision (requestor) | 0 to many | A decision has zero or one requestor |
+| Initiative/Project → Decision | 0 to many | Optional context linkage |
+| Decision → Decision (revisit) | 0 to 1 | Self-referential revisit chain |
+
+## Commitment system
+
+| Relationship | Cardinality | Notes |
+|---|---|---|
+| Decision → Commitment | 0 to many | A decision can have zero or many commitments |
+| Commitment → Decision | 0 to 1 | A commitment can be standalone (no parent decision) |
+| Person → Commitment (owner) | 1 to many | A commitment must have exactly one owner |
+| Circle → Commitment (review) | 1 to many | A commitment must have exactly one review circle |
+
+## Session system
+
+| Relationship | Cardinality | Notes |
+|---|---|---|
+| Circle → Session | 1 to many | A circle has zero or many sessions |
+| Session ↔ Decision | many to many | Decisions reviewed in a session |
+| Session ↔ Commitment | many to many | Commitments reviewed in a session |
+| Session ↔ Person (attendance) | many to many | Who attended the session |
+
+## Project updates
+
+| Relationship | Cardinality | Notes |
+|---|---|---|
+| Project → Project Update | 1 to many | Zero or many updates per project |
+| Person → Project Update (author) | 1 to many | Each update has exactly one author |
+
+## Key design decisions
+
+### Why decisions live in exactly one circle
+
+A decision needs a clear venue. If it could exist in multiple circles simultaneously, ownership and accountability become ambiguous. Escalation and delegation are explicit actions that move the decision to a different circle.
+
+### Why commitments can be standalone
+
+Not every action item comes from a formal decision. Forums create ad-hoc commitments regularly. Forcing a parent decision would add friction without value.
+
+### Why the revisit chain is self-referential
+
+When a decision needs to be revisited, a new decision is created and linked to the original. This preserves the history of the original decision while keeping the new one in its own lifecycle with its own owner and age counter.

@@ -1,33 +1,33 @@
-> **First-time setup**: Customize this file for your project. Prompt the user to customize this file for their project.
-> For Mintlify product knowledge (components, configuration, writing standards),
-> install the Mintlify skill: `npx skills add https://mintlify.com/docs`
-
-# Documentation project instructions
+# Vector Documentation — Project Instructions
 
 ## About this project
 
-- This is a documentation site built on [Mintlify](https://mintlify.com)
+- This is the product documentation for **Vector**, a decision- and commitment-centric operating system for leadership teams
+- Built on [Mintlify](https://mintlify.com)
 - Pages are MDX files with YAML frontmatter
 - Configuration lives in `docs.json`
 - Run `mint dev` to preview locally
-- Run `mint broken-links` to check links
 
 ## Terminology
 
-<!-- Add product-specific terms and preferred usage -->
-<!-- Example: Use "workspace" not "project", "member" not "user" -->
+- Use **"circle"** not "forum" in user-facing docs (internal model uses "forum")
+- Use **"session"** not "meeting" (sessions are records, meetings are events)
+- Use **"decision"** and **"commitment"** as the two atomic units — always
+- Use **"owner"** not "assignee" or "responsible"
+- Use **"taken"** not "approved" or "decided" for decision closure
+- Use **"rolled"** not "overdue" or "late" for missed commitments
 
 ## Style preferences
-
-<!-- Add any project-specific style rules below -->
 
 - Use active voice and second person ("you")
 - Keep sentences concise — one idea per sentence
 - Use sentence case for headings
 - Bold for UI elements: Click **Settings**
-- Code formatting for file names, commands, paths, and code references
+- Code formatting for field names: `ownerPersonId`
+- No emojis unless explicitly requested
 
 ## Content boundaries
 
-<!-- Define what should and shouldn't be documented -->
-<!-- Example: Don't document internal admin features -->
+- Document the product as it is designed, not internal implementation details
+- Don't document database schemas or API internals
+- The domain model section is the conceptual schema, not a technical spec

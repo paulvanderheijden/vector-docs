@@ -1,0 +1,53 @@
+---
+title: "Circles"
+description: "Recurring forums where decisions are routed and commitments are reviewed."
+---
+
+A **circle** is a recurring forum — a group of people who meet at a regular cadence to make decisions and review commitments. In Vector, circles are the routing layer for the entire system.
+
+Decisions don't float in space. They're routed to a specific circle where the right people can discuss and resolve them.
+
+## Anatomy of a circle
+
+| Field | Description |
+|---|---|
+| **Name** | The forum's name (e.g., "MT Weekly", "Product Forum") |
+| **Purpose** | Either **Decide** (the forum makes decisions) or **Review** (the forum reviews progress) |
+| **Cadence** | How often the circle meets (e.g., "Weekly (Mon)", "Biweekly", "Monthly") |
+| **Members** | The people who are part of this circle |
+
+## Purpose: Decide vs. Review
+
+Circles have one of two purposes:
+
+### Decide
+
+The circle exists primarily to **make decisions**. Sessions are structured around an agenda of decisions to discuss, debate, and resolve. Commitments are created as outputs of those decisions.
+
+Examples: MT Weekly, GTM Council, Product Forum.
+
+### Review
+
+The circle exists primarily to **review progress**. Sessions are structured around reviewing commitment status, initiative health, and flagging issues. Decisions may still be made, but the primary activity is accountability review.
+
+Examples: People & Org Review, Quarterly Business Review.
+
+## Circles as the routing layer
+
+When someone creates a decision, they route it to a circle. This means:
+
+- The decision appears on that circle's agenda
+- The circle's members will discuss it in an upcoming session
+- The circle can take, escalate, or delegate the decision
+
+A decision lives in exactly one circle at a time. If it's escalated, it moves to a different circle. If it's delegated, it moves down.
+
+## Circle health
+
+Circles degrade when neglected. The system tracks:
+
+- **Session regularity** — is the circle meeting on cadence?
+- **Agenda coverage** — are decisions and commitments actually being reviewed?
+- **Decision throughput** — are decisions aging or moving?
+
+This isn't a score or a dashboard widget. It's built into the texture of how the circle feels when you open it — stale circles look stale.

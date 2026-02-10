@@ -1,0 +1,93 @@
+---
+title: "Decision lifecycle"
+description: "How a decision flows from creation to closure."
+---
+
+Every decision in Vector follows a clear lifecycle. The system is designed so decisions move forward — and when they don't, the pressure becomes visible.
+
+## The lifecycle
+
+<Steps>
+  <Step title="A need is raised">
+    Someone identifies that a decision needs to be made. This could be a team lead whose project is blocked, an executive spotting a strategic fork, or a forum surfacing an unresolved question.
+
+    The **requestor** frames the need: "We need to decide X because Y."
+  </Step>
+  <Step title="A decision is created (Draft)">
+    The decision is created in Vector with a clear statement. A **decision owner** is assigned — the person accountable for getting it made. The default owner is the person accountable for the initiative the decision affects.
+
+    At this stage the decision is a **Draft**. The owner gathers context, frames options, and prepares it for forum discussion.
+
+    **The age counter starts ticking.**
+  </Step>
+  <Step title="Routed to a forum (Proposed)">
+    The owner routes the decision to the appropriate [circle](/concepts/circles). It moves to **Proposed** status and appears on the circle's agenda for an upcoming session.
+
+    The owner chooses the forum based on who needs to be in the room. A product decision goes to Product Forum. A cross-functional resource allocation goes to MT Weekly.
+  </Step>
+  <Step title="Discussed in session">
+    The decision is discussed in a [session](/concepts/sessions). The forum reviews the context, debates options, and works toward resolution.
+
+    Three outcomes are possible:
+  </Step>
+  <Step title="Outcome A: Taken">
+    The forum makes the call. The decision moves to **Taken** status.
+
+    The decision owner's job is now done. [Commitments](/concepts/commitments) are created to execute on the decision — each with its own owner and due date. The decision is closed.
+  </Step>
+  <Step title="Outcome B: Escalated">
+    The forum can't resolve it — it requires a higher-level group. The decision moves to **Escalated** status and is re-routed to a different circle (e.g., from Product Forum to MT Weekly).
+
+    The owner remains the same unless explicitly reassigned. The age keeps ticking.
+  </Step>
+  <Step title="Outcome C: Delegated">
+    The forum determines it should be resolved by a more specific group or individual. The decision moves to **Delegated** status and is re-routed down.
+
+    The owner may change to someone closer to the problem.
+  </Step>
+</Steps>
+
+## After a decision is taken
+
+Once taken, the decision is closed. The system transitions from decision mode to execution mode:
+
+1. **Commitments are created** — concrete outcomes with owners and due dates
+2. **The decision owner's job ends** — they are no longer responsible
+3. **Commitment owners take over** — they execute, report, and are reviewed in sessions
+4. **If reality changes** — a new decision is raised, potentially as a "revisit" linked to the original
+
+<Note>
+  There are no zombie decisions in Vector. A decision is either actively moving through its lifecycle or it's been taken. If a taken decision needs revisiting, a new decision is created with an explicit revisit link.
+</Note>
+
+## Status flow diagram
+
+```
+Draft → Proposed → Taken
+                 ↘ Escalated → (re-enters at Proposed in a different circle)
+                 ↘ Delegated → (re-enters at Proposed in a different circle)
+```
+
+## Ownership defaults
+
+| Scenario | Default owner |
+|---|---|
+| Decision affects a specific initiative | The person accountable for that initiative |
+| Decision is escalated to MT | The CEO |
+| Decision cuts across priorities or resources | The CEO |
+| Decision is delegated down | Reassigned to the relevant person |
+
+The requestor is **never** the default owner. The requestor creates pull; the owner ensures closure.
+
+## Age as pressure
+
+The age counter is the primary forcing function. It's visible everywhere a decision appears:
+
+| Age | Signal |
+|---|---|
+| 0-3 days | Fresh — expected for new decisions |
+| 4-7 days | Normal — should be on a session agenda |
+| 8-14 days | Aging — needs attention |
+| 15+ days | Stale — something is wrong |
+
+The exact thresholds depend on the decision's context and the circle's cadence, but the principle is universal: old decisions are a smell.

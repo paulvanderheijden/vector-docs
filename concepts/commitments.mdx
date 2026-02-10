@@ -1,0 +1,53 @@
+---
+title: "Commitments"
+description: "Execution artifacts that track who will do what by when."
+---
+
+A **commitment** is the second atomic unit in Vector. Where decisions set direction, commitments drive execution. A commitment answers: **who will do what by when?**
+
+Commitments are reviewed in forum sessions. They have a single owner, a due date, and a status that makes delivery (or slippage) visible.
+
+## Anatomy of a commitment
+
+| Field | Description |
+|---|---|
+| **Outcome** | What will be delivered, written as a concrete outcome |
+| **Owner** | The single person accountable for delivery |
+| **Review forum** | The circle where this commitment is reviewed |
+| **Due** | When it's expected to be delivered |
+| **Status** | Current state: Active, At risk, Rolled, Delivered |
+| **Decision** | The decision this commitment flows from (optional) |
+
+## Status values
+
+| Status | Meaning |
+|---|---|
+| **Active** | On track, being worked on |
+| **At risk** | The owner or reviewer has flagged potential slippage |
+| **Rolled** | The due date was missed and the commitment carried over to the next review cycle |
+| **Delivered** | The outcome has been completed |
+
+## Relationship to decisions
+
+Commitments often flow from decisions — when a decision is taken, the forum creates commitments to execute on it. A single decision can produce multiple commitments with different owners.
+
+However, commitments can also be **standalone**. Not every commitment needs a parent decision. A forum can create a commitment directly (e.g., "Prepare the board deck by Friday").
+
+## The "roll" mechanic
+
+When a commitment's due date passes without delivery, its status changes to **Rolled**. This is the system punishing neglect — the commitment doesn't disappear or get quietly extended. It visibly carries over to the next session with its rolled status on display.
+
+Rolled commitments create natural accountability pressure in the forum review.
+
+## Review in sessions
+
+Commitments are reviewed during [sessions](/concepts/sessions). Each session has a list of commitments on its agenda. During the session, the forum checks:
+
+- Is it still active and on track?
+- Should it be flagged as at risk?
+- Has it been delivered?
+- Has it rolled from a previous session?
+
+<Card title="Commitment Lifecycle" icon="arrows-spin" href="/lifecycle/commitment-lifecycle" horizontal>
+  See the full lifecycle of a commitment from creation to delivery.
+</Card>

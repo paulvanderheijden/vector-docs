@@ -1,0 +1,54 @@
+---
+title: "Initiatives & Projects"
+description: "Strategic bets and their execution containers."
+---
+
+**Initiatives** and **projects** provide the strategic context layer in Vector. They answer "what are we working on and why?" — while decisions and commitments answer "what did we decide?" and "who's doing what?"
+
+## Initiatives
+
+An initiative is a strategic bet — a high-level objective the organization is pursuing.
+
+| Field | Description |
+|---|---|
+| **Name** | The initiative's title |
+| **Status** | Planned, Active, or Completed |
+| **Target date** | Flexible granularity: month, quarter, or year |
+| **Visibility** | Public (everyone can see) or Restricted (subscribers + owner only) |
+
+Initiatives contain one or more projects. They represent the "why" — the strategic direction.
+
+**Examples:**
+- "Launch DACH market by end of Q1"
+- "Ship enterprise tier (SSO + analytics)"
+- "Reduce churn from 8% to 5%"
+
+## Projects
+
+A project is an execution container that belongs to exactly one initiative. It represents a concrete stream of work.
+
+| Field | Description |
+|---|---|
+| **Name** | The project's title |
+| **Initiative** | The parent initiative (required, exactly one) |
+| **Visibility** | Public or Restricted (independent of initiative visibility) |
+| **Lead** | The person responsible for the project |
+
+Projects can have **updates** — status reports posted by the project lead or team members that track progress over time.
+
+## Linking to decisions and commitments
+
+Decisions and commitments can optionally reference an initiative or project for context. This linkage is informational — it helps people understand **why** a decision matters or **what strategic bet** a commitment serves.
+
+For example:
+- Decision: "Prioritize DACH launch over Nordics expansion" → linked to the DACH initiative
+- Commitment: "DACH go-live with 3 pilot customers by end of Q1" → linked to the DACH initiative
+
+## Visibility
+
+Both initiatives and projects support visibility controls:
+
+- **Public** — visible to everyone in the organization
+- **Restricted** — only visible to explicit subscribers plus the owner/lead
+
+Project visibility is independent of its parent initiative. A public initiative can contain restricted projects, and vice versa.
