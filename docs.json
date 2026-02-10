@@ -63,6 +63,8 @@
             "group": "Architecture",
             "pages": [
               "frontend/screens",
+              "frontend/page-trees",
+              "frontend/component-inventory",
               "frontend/components"
             ]
           }

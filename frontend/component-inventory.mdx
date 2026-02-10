@@ -1,0 +1,273 @@
+---
+title: "Component Inventory"
+description: "Canonical list of every shared component, its purpose, props, and which pages use it."
+---
+
+## Layout Components
+
+### PageHeader / PageHeaderRow / PageHeaderGroup
+
+`src/components/PageHeader.tsx`
+
+Consistent page header layout injected into the App shell's sticky header area via the `usePageHeader` hook. `PageHeader` wraps rows, `PageHeaderRow` is a horizontal bar with `border-b`, `PageHeaderGroup` groups items with flex gap. Convention: Row 1 = title + tabs + actions, Row 2 = Filter + Display popovers.
+
+| Prop | Type | Description |
+|---|---|---|
+| `children` | ReactNode | Content |
+
+**Used in:** every page
+
+### DetailSidebar (SidebarSection + PropertyRow)
+
+`src/components/DetailSidebar.tsx`
+
+Right-side detail panel for entity detail pages. Fixed-position aside, 288px wide, slides in/out with transition. `SidebarSection` is a collapsible section with title. `PropertyRow` renders a label + value pair in a compact 26px row.
+
+| Component | Props |
+|---|---|
+| `SidebarSection` | `title: string`, `defaultOpen?: boolean` (default true), `children: ReactNode` |
+| `PropertyRow` | `label: string`, `children: ReactNode` |
+
+**Used in:** DecisionDetail, CommitmentReview, InitiativeDetail, ProjectDetail
+
+### AppSidebar
+
+`src/components/AppSidebar.tsx`
+
+Main navigation sidebar. Uses shadcn `Sidebar*` primitives + Radix `Collapsible`. Structure:
+
+- **Top-level links** — Inbox, My Items
+- **Workspace section** — Strategy, Initiatives, Projects, Circles
+- **Your Circles** — one collapsible per circle with sub-items:
+  - Sessions (Previous / Upcoming shortcuts)
+  - Decisions
+  - Commitments
+
+First circle is expanded by default. Active route is highlighted.
+
+**Used in:** App shell (always visible)
+
+---
+
+## Data Display Components
+
+### DecisionsTable
+
+`src/components/DecisionsTable.tsx`
+
+Reusable decisions table wrapping `DataTable`. Decision-specific columns: ref, statement, circle, session link, owner avatar, status badge, age. Supports column visibility toggling, combined status+owner column for compact views, drag-and-drop reorder, and click-to-open handler.
+
+| Prop | Type | Default | Description |
+|---|---|---|---|
+| `decisions` | `Decision[]` | required | Decision data |
+| `showCircle` | `boolean` | `true` | Show circle column |
+| `showSession` | `boolean` | `false` | Show session column |
+| `showAge` | `boolean` | `true` | Show age column |
+| `noDividers` | `boolean` | — | Remove row dividers |
+| `onReorder` | `(from, to) => void` | — | Enable drag-and-drop |
+| `onDecisionClick` | `(decision) => void` | — | Click handler (replaces Link) |
+| `showSelect` | `boolean` | — | Show row selection checkboxes |
+| `showDragHandle` | `boolean` | — | Show drag handle |
+| `showHeader` | `boolean` | — | Show table header |
+| `combinedStatusOwner` | `boolean` | `false` | Merge status + owner into single right-aligned column |
+
+**Used in:** Inbox, MyItems, CircleView, SessionDetail
+
+### CommitmentsTable
+
+`src/components/CommitmentsTable.tsx`
+
+Reusable commitments table wrapping `DataTable`. Commitment-specific columns: ref, outcome, decision ref, circle, owner avatar, due date, status badge.
+
+| Prop | Type | Default | Description |
+|---|---|---|---|
+| `commitments` | `Commitment[]` | required | Commitment data |
+| `showOwner` | `boolean` | `true` | Show owner column |
+| `showCircle` | `boolean` | `true` | Show circle column |
+| `showDecision` | `boolean` | `true` | Show decision column |
+| `noDividers` | `boolean` | — | Remove row dividers |
+| `showSelect` | `boolean` | — | Show row selection checkboxes |
+| `showHeader` | `boolean` | — | Show table header |
+| `combinedStatusOwner` | `boolean` | `false` | Merge decision ref + owner into single column |
+
+**Used in:** MyItems, CircleView, DecisionDetail, SessionDetail
+
+### DecisionList
+
+`src/components/DecisionList.tsx`
+
+Lightweight decision list for project context. Compact row format: status badge (fixed width), ref, title, circle name, age. Uses `ProjectDecision` type (from projects-store), not the main `Decision` type.
+
+| Prop | Type | Description |
+|---|---|---|
+| `decisions` | `ProjectDecision[]` | Decision data |
+
+**Used in:** ProjectDetail (decisions tab)
+
+### CommitmentList
+
+`src/components/CommitmentList.tsx`
+
+Lightweight commitment list for project context. Compact row format: status badge (fixed width), ref, outcome, owner first name, due label. Uses `ProjectCommitment` type (from projects-store).
+
+| Prop | Type | Description |
+|---|---|---|
+| `commitments` | `ProjectCommitment[]` | Commitment data |
+
+**Used in:** ProjectDetail (commitments tab)
+
+### ChangeLog
+
+`src/components/ChangeLog.tsx`
+
+Activity feed. Each entry shows avatar, person name, action description, optional from/to values, and days ago.
+
+| Prop | Type | Description |
+|---|---|---|
+| `entries` | `ChangeLogEntry[]` | Activity entries |
+
+**Used in:** DecisionDetail (activity tab), CommitmentReview (activity tab)
+
+### HealthIndicator
+
+`src/components/HealthIndicator.tsx`
+
+Visual health status with colored icon (TrendingUp / TrendingUpDown / TrendingDown) and label. Optional staleness indicator ("Xd").
+
+| Prop | Type | Description |
+|---|---|---|
+| `health` | `InitiativeHealth` | `"on-track"` / `"at-risk"` / `"off-track"` |
+| `daysAgo` | `number?` | Days since last health update |
+
+**Used in:** InitiativesList, InitiativeDetail (project table), ProjectsList, ProjectDetail (sidebar)
+
+### TeamChips
+
+`src/components/TeamChips.tsx`
+
+Renders team names as outlined `Badge` components. Resolves team IDs to names via projects-store.
+
+| Prop | Type | Description |
+|---|---|---|
+| `teamIds` | `string[]` | Team IDs to display |
+
+**Used in:** InitiativeDetail (project table), ProjectsList, ProjectDetail (overview + sidebar)
+
+### PersonSelector
+
+`src/components/PersonSelector.tsx`
+
+Avatar-based person picker. Shows a small 18px avatar that opens a popover with the full people list. Can resolve by name or initials.
+
+| Prop | Type | Default | Description |
+|---|---|---|---|
+| `value` | `string` | required | Current person (name or initials) |
+| `onSelect` | `(person) => void` | — | Selection handler |
+| `resolveBy` | `"name"` / `"initials"` | `"name"` | How to resolve `value` to a person |
+
+**Used in:** DecisionsTable (owner cell), CommitmentsTable (owner cell), InitiativesList (owner cell), InitiativeDetail (project table), ProjectsList (owner cell)
+
+### VisibilityIndicator
+
+`src/components/VisibilityIndicator.tsx`
+
+Inline icon + label for public/private visibility. Eye / EyeOff icon.
+
+| Prop | Type | Description |
+|---|---|---|
+| `label` | `string` | Display label |
+| `visible` | `boolean` | Public or private |
+
+**Used in:** not yet used (available for future use)
+
+---
+
+## Interactive Components
+
+### InlineText
+
+`src/components/InlineText.tsx`
+
+Click-to-edit text field. Shows static text that becomes an input on click. Enter saves, Escape cancels.
+
+| Prop | Type | Default | Description |
+|---|---|---|---|
+| `value` | `string` | required | Current value |
+| `onChange` | `(value) => void` | required | Save handler |
+| `className` | `string?` | — | Styling |
+| `placeholder` | `string?` | `"Empty"` | Placeholder when empty |
+| `as` | `"div"` / `"h1"` / `"p"` | `"div"` | HTML element to render |
+
+**Used in:** DecisionDetail (statement), CommitmentReview (outcome), InitiativeDetail (title, summary), ProjectDetail (title, description)
+
+### PropertySelect
+
+`src/components/PropertySelect.tsx`
+
+Inline property picker. Clickable trigger opens a popover with options. Each option can have an icon. Checkmark on selected item.
+
+| Prop | Type | Description |
+|---|---|---|
+| `value` | `string` | Current value |
+| `options` | `{ value, label, icon? }[]` | Available options |
+| `onSelect` | `(value) => void` | Selection handler |
+| `triggerClassName` | `string?` | Custom trigger styling |
+
+**Used in:** DecisionDetail (status, owner), InitiativeDetail (status, health, owner, target), ProjectDetail (health, visibility, owner)
+
+### EscalateDialog
+
+`src/components/EscalateDialog.tsx`
+
+Modal dialog for escalating or delegating a decision. Shows decision statement, target circle/person selector, and reason textarea.
+
+| Prop | Type | Description |
+|---|---|---|
+| `decisionStatement` | `string` | The decision being escalated/delegated |
+| `mode` | `"escalate"` / `"delegate"` | Which action |
+
+**Used in:** DecisionDetail (header actions)
+
+### MarkdownEditor
+
+`src/components/MarkdownEditor.tsx`
+
+TipTap-based rich text editor with markdown serialization. BubbleMenu toolbar: bold, italic, strike, code, link, headings (H2/H3), lists, blockquote. Slash commands for block insertion.
+
+| Prop | Type | Description |
+|---|---|---|
+| `content` | `string` | Initial markdown content |
+| `onChange` | `(markdown) => void` | Change handler |
+
+**Used in:** Strategy (main content), DecisionDetail (rationale, discussion), InitiativeDetail (description), SessionDetail (meeting notes)
+
+---
+
+## UI Primitives (shadcn)
+
+These are standard shadcn/ui components. Not documented individually here, but the notable ones:
+
+| Primitive | Notable usage |
+|---|---|
+| `DataTable` | Base for DecisionsTable, CommitmentsTable, and direct use in CirclesList, InitiativesList, ProjectsList, SessionsList, InitiativeDetail |
+| `Badge` | Status badges throughout the app |
+| `Avatar` | Person display throughout the app |
+| `Button` | Actions, filters, toggles |
+| `Popover` | Filter/Display dropdowns, PropertySelect, PersonSelector, icon picker |
+| `Select` | Filter dropdowns (health, team, owner), EscalateDialog, invite selector |
+| `Dialog` | EscalateDialog |
+| `Sidebar*` | AppSidebar |
+| `Collapsible` | AppSidebar circle sections, DetailSidebar sections |
+| `ScrollArea` | App shell main content area |
+
+---
+
+## Hooks
+
+### usePageHeader
+
+`src/hooks/usePageHeader.ts`
+
+Allows pages to inject their header content into the App shell's sticky header via React Router's Outlet context. Accepts `pageTitle`, `headerContent` (JSX), and optional `breadcrumbs`.
+
+**Used in:** every page

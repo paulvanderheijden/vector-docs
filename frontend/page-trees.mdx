@@ -1,0 +1,391 @@
+---
+title: "Page Component Trees"
+description: "Per-page nested component structure showing how shared components compose into each screen."
+---
+
+## App Shell
+
+Wraps all pages. Always rendered.
+
+```
+App
+├── SidebarProvider
+│   ├── AppSidebar
+│   │   ├── Sidebar > SidebarHeader (workspace logo + name)
+│   │   └── SidebarContent
+│   │       ├── SidebarGroup: top links (Inbox, My Items)
+│   │       ├── Collapsible: Workspace (Strategy, Initiatives, Projects, Circles)
+│   │       └── Collapsible: Your Circles
+│   │           └── Collapsible (per circle)
+│   │               ├── Sessions > Previous / Upcoming
+│   │               ├── Decisions
+│   │               └── Commitments
+│   └── SidebarInset
+│       ├── [sticky] PageHeader (injected by current page via usePageHeader)
+│       └── ScrollArea
+│           └── <Outlet /> → current page
+```
+
+---
+
+## Inbox `/`
+
+Shows proposed decisions from the user's circles, filterable by circle.
+
+```
+PageHeader (via usePageHeader)
+├── PageHeaderRow
+│   ├── PageHeaderGroup: "Inbox" + circle filter tabs + [+] button
+│   └── PageHeaderGroup: [New Decision] button
+└── PageHeaderRow
+    ├── PageHeaderGroup: Filter popover
+    └── PageHeaderGroup: Display popover
+
+Page body
+└── DecisionsTable (noDividers)
+```
+
+---
+
+## My Items `/my-items`
+
+User's assigned decisions and commitments with tab switching.
+
+```
+PageHeader (via usePageHeader)
+├── PageHeaderRow
+│   ├── PageHeaderGroup: "My Items" + Decisions/Commitments tabs + [+] button
+│   └── PageHeaderGroup: [New Decision / New Commitment] button
+└── PageHeaderRow
+    ├── PageHeaderGroup: Filter popover
+    └── PageHeaderGroup: Display popover
+
+Page body (conditional on active tab)
+├── DecisionsTable (noDividers)           ← decisions tab
+└── CommitmentsTable (noDividers)         ← commitments tab
+```
+
+---
+
+## Strategy `/strategy`
+
+Editable strategy document with auto-generated table of contents sidebar.
+
+```
+PageHeader (via usePageHeader)
+├── PageHeaderRow
+│   ├── PageHeaderGroup: "Strategy"
+│   └── PageHeaderGroup: Display popover
+
+Page body
+├── Main column (max-w-800)
+│   ├── h1 "Strategy"
+│   └── MarkdownEditor (strategy content)
+└── TOC sidebar (sticky right nav, lg+ only)
+    └── Heading links (extracted from editor DOM via useTableOfContents)
+```
+
+---
+
+## Circles List `/circles`
+
+Table of all circles with membership, purpose, cadence, and member avatars.
+
+```
+PageHeader (via usePageHeader)
+├── PageHeaderRow
+│   ├── PageHeaderGroup: "Circles" + [All Circles] + [+] button
+│   └── PageHeaderGroup: [New Circle] button
+└── PageHeaderRow
+    ├── PageHeaderGroup: Filter popover
+    └── PageHeaderGroup: Display popover
+
+Page body
+└── DataTable (direct usage, custom columns)
+    └── Columns: name, membership (Join button), purpose Badge, cadence, member Avatars
+```
+
+---
+
+## Circle View `/circles/:slug/decisions` or `/circles/:slug/commitments`
+
+Circle's decisions or commitments, section derived from URL path.
+
+```
+PageHeader (via usePageHeader)
+├── PageHeaderRow
+│   ├── PageHeaderGroup: circle icon + "Circle > Decisions" + decision filter tabs
+│   └── PageHeaderGroup: [New Decision] button (decisions section only)
+└── PageHeaderRow
+    ├── PageHeaderGroup: Filter popover
+    └── PageHeaderGroup: Display popover
+
+Page body (conditional on section)
+├── DecisionsTable (showCircle=false, showSession, noDividers)   ← decisions
+└── CommitmentsTable (showCircle=false, noDividers)              ← commitments
+```
+
+---
+
+## Decision Detail `/circles/:slug/decisions/:decisionSlug`
+
+Full decision view with tabs (overview, commitments, activity) and right sidebar.
+
+```
+PageHeader (via usePageHeader)
+└── PageHeaderRow
+    ├── PageHeaderGroup
+    │   ├── Circle icon
+    │   ├── Breadcrumb: "Circle > Decisions > DEC-N" + statement
+    │   └── Tab buttons: Overview | Commitments | Activity
+    └── PageHeaderGroup
+        ├── EscalateDialog (mode="escalate")
+        ├── EscalateDialog (mode="delegate")
+        └── Sidebar toggle (PanelRight icon)
+
+Page body (conditional on active tab)
+├── Overview tab (max-w-800)
+│   ├── InlineText (decision statement, as h1)
+│   ├── Properties row
+│   │   ├── PropertySelect (status, with Badge icons)
+│   │   ├── Age indicator (colored)
+│   │   ├── PropertySelect (owner, with Avatar icons)
+│   │   ├── "Requested by" label
+│   │   └── Circle label
+│   ├── "Rationale" → MarkdownEditor
+│   ├── "Implications" → bullet list
+│   └── "Discussion" → MarkdownEditor
+├── Commitments tab
+│   └── CommitmentsTable
+└── Activity tab (max-w-800)
+    └── ChangeLog
+
+DetailSidebar (fixed right, 288px, toggle)
+├── SidebarSection "Properties"
+│   ├── PropertyRow "Status" → Badge
+│   ├── PropertyRow "Age" → colored text
+│   ├── PropertyRow "Owner" → PropertySelect
+│   ├── PropertyRow "Requested" → text
+│   └── PropertyRow "Circle" → Link
+└── SidebarSection "Summary" → text
+```
+
+---
+
+## Commitment Review `/circles/:slug/commitments/:commitmentSlug`
+
+Commitment view with tabs (overview, activity) and right sidebar.
+
+```
+PageHeader (via usePageHeader)
+└── PageHeaderRow
+    ├── PageHeaderGroup
+    │   ├── Circle icon
+    │   ├── Breadcrumb: "Circle > Commitments > COM-N" + outcome
+    │   └── Tab buttons: Overview | Activity
+    └── PageHeaderGroup
+        ├── [Re-commit?] button (if rolled/at-risk)
+        └── Sidebar toggle
+
+Page body (conditional on active tab)
+├── Overview tab (max-w-800)
+│   ├── Alert banner (rolled = red, at-risk = amber)
+│   ├── InlineText (outcome, as h1)
+│   ├── Properties row: Badge (status), due date, owner, circle
+│   └── "Linked Decision" → Link card with Badge + status
+└── Activity tab (max-w-800)
+    └── ChangeLog
+
+DetailSidebar (fixed right, 288px, toggle)
+├── SidebarSection "Properties"
+│   ├── PropertyRow "Status" → Badge
+│   ├── PropertyRow "Due" → text
+│   ├── PropertyRow "Owner" → text
+│   └── PropertyRow "Circle" → Link
+└── SidebarSection "Linked Decision" → Link + Badge
+```
+
+---
+
+## Sessions List `/circles/:slug/sessions`
+
+Paginated list of circle sessions.
+
+```
+PageHeader (via usePageHeader)
+└── PageHeaderRow
+    ├── PageHeaderGroup: circle icon + "Circle > Sessions"
+    └── PageHeaderGroup: [New Session] button
+
+Page body (max-w-800)
+├── DataTable (direct usage, custom columns)
+│   └── Columns: #number, title, date, decisions count, commitments count, completed check
+└── Pagination controls (Previous / Next buttons)
+```
+
+---
+
+## Session Detail `/circles/:slug/sessions/:sessionNumber`
+
+Meeting workspace with decisions agenda, commitments review, notes editor, and decision drawer.
+
+```
+PageHeader (via usePageHeader)
+└── PageHeaderRow
+    └── PageHeaderGroup: circle icon + "Circle > Session N" + friendly date
+
+Page body (max-w-800)
+├── Input (editable session title, styled as h1)
+├── "Decisions" section
+│   ├── Section header + [Add Decision] button
+│   └── DecisionsTable
+│       (showCircle=false, showAge=false, showSelect=false,
+│        showDragHandle=false, showHeader=false, combinedStatusOwner,
+│        noDividers, onReorder, onDecisionClick → opens drawer)
+├── "Commitments" section
+│   ├── Section header + [Add Commitment] button
+│   └── CommitmentsTable
+│       (showCircle=false, showDecision=false, showSelect=false,
+│        showHeader=false, combinedStatusOwner, noDividers)
+└── "Meeting Notes" section
+    └── MarkdownEditor (session notes)
+
+Decision drawer (fixed right, 480px, toggle on row click)
+├── Drawer header: ref + statement + [open full] Link + [close] button
+└── Drawer content
+    ├── Properties row: Badge (status), age, owner, requested by
+    ├── "Rationale" → text
+    ├── "Implications" → bullet list
+    └── "Discussion" → text
+```
+
+---
+
+## Initiatives List `/initiatives`
+
+Filterable list of initiatives with status tabs.
+
+```
+PageHeader (via usePageHeader)
+├── PageHeaderRow
+│   ├── PageHeaderGroup: "Initiatives" + Active/Planned/Completed tabs + [+] button
+│   └── PageHeaderGroup: [New Initiative] button
+└── PageHeaderRow
+    ├── PageHeaderGroup: Filter popover (health Select, owner Select)
+    └── PageHeaderGroup: Display popover
+
+Page body
+└── DataTable (direct usage, custom columns)
+    └── Columns: icon, title, PersonSelector (owner), target, projects count, HealthIndicator
+```
+
+---
+
+## Initiative Detail `/initiatives/:initiativeId`
+
+Initiative detail with icon picker, editable properties, tabs (overview, updates, projects), and right sidebar.
+
+```
+PageHeader (via usePageHeader)
+└── PageHeaderRow
+    ├── PageHeaderGroup
+    │   ├── Breadcrumb: "Initiatives >" + title
+    │   └── Tab buttons: Overview | Updates | Projects
+    └── PageHeaderGroup
+        ├── [Add project] button
+        └── Sidebar toggle
+
+Page body (conditional on active tab)
+├── Overview tab (max-w-800)
+│   ├── Popover → icon picker grid (8 icon/color combos)
+│   ├── InlineText (title, as h1)
+│   ├── InlineText (summary, as p)
+│   ├── Properties row
+│   │   ├── PropertySelect (status)
+│   │   ├── PropertySelect (health, with colored icons)
+│   │   ├── PropertySelect (owner, with Avatar icons)
+│   │   └── PropertySelect (target quarter)
+│   └── "Description" → MarkdownEditor
+├── Updates tab → placeholder
+└── Projects tab
+    └── DataTable (direct usage, project columns)
+        └── Columns: title + Lock icon, PersonSelector (owner), HealthIndicator, TeamChips, decisions count, commitments count
+
+DetailSidebar (fixed right, 288px, toggle)
+├── SidebarSection "Properties"
+│   ├── PropertyRow "Status" → PropertySelect
+│   ├── PropertyRow "Health" → PropertySelect
+│   ├── PropertyRow "Owner" → PropertySelect
+│   └── PropertyRow "Target" → PropertySelect
+└── SidebarSection "Summary" → text
+```
+
+---
+
+## Projects List `/projects`
+
+Projects grouped by initiative, filterable by team and health.
+
+```
+PageHeader (via usePageHeader)
+├── PageHeaderRow
+│   ├── PageHeaderGroup: "Projects" + All/My tabs + [+] button
+│   └── PageHeaderGroup: [New Project] button
+└── PageHeaderRow
+    ├── PageHeaderGroup: Filter popover (team Select, health Select, reset button)
+    └── PageHeaderGroup: Display popover
+
+Page body
+└── DataTable (direct usage, grouped by initiativeId)
+    ├── Group row: expand/collapse + initiative title + project count + [+] button
+    └── Columns: title + Lock icon, PersonSelector (owner), HealthIndicator, TeamChips, decisions count, commitments count
+```
+
+---
+
+## Project Detail `/projects/:projectId`
+
+Project detail with tabs (overview, decisions, commitments) and right sidebar.
+
+```
+PageHeader (via usePageHeader)
+└── PageHeaderRow
+    ├── PageHeaderGroup
+    │   ├── Breadcrumb: "Projects >" + title
+    │   └── Tab buttons: Overview | Decisions | Commitments
+    └── PageHeaderGroup
+        ├── [Follow/Following] button (public projects, non-owner)
+        └── Sidebar toggle
+
+Page body (conditional on active tab)
+├── Overview tab (max-w-800)
+│   ├── Alert banner (if >2 rolled commitments)
+│   ├── InlineText (title, as h1)
+│   ├── InlineText (description, as p)
+│   ├── Properties row
+│   │   ├── PropertySelect (health, with colored icons)
+│   │   ├── PropertySelect (visibility: public/private)
+│   │   ├── PropertySelect (owner, with Avatar icons)
+│   │   └── Link to parent initiative
+│   └── "Teams" → TeamChips
+├── Decisions tab
+│   └── DecisionList
+└── Commitments tab
+    └── CommitmentList
+
+DetailSidebar (fixed right, 288px, toggle)
+├── SidebarSection "Properties"
+│   ├── PropertyRow "Health" → HealthIndicator
+│   ├── PropertyRow "Visibility" → PropertySelect
+│   ├── PropertyRow "Owner" → PropertySelect
+│   └── PropertyRow "Initiative" → Link
+├── SidebarSection "Signals"
+│   ├── PropertyRow "Open" → commitment count
+│   ├── PropertyRow "Rolled" → rolled count
+│   └── PropertyRow "Dec. (14d)" → recent decision count
+├── SidebarSection "Teams" → TeamChips
+└── SidebarSection "People" (private projects only)
+    ├── Owner row: Avatar + name + "Owner" Badge
+    ├── Subscriber rows: Avatar + name + [remove] button
+    └── Select (invite person)
+```
