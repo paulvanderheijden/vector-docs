@@ -11,8 +11,8 @@ description: "Overview of all screens in the Vector frontend."
 | **My Items** | `/my-items` | `MyItems` | User's assigned decisions and commitments with tab switching |
 | **Strategy** | `/strategy` | `Strategy` | Editable markdown strategy document with auto-generated table of contents |
 | **Circles List** | `/circles` | `CirclesList` | All circles with membership status, purpose, cadence, and member avatars |
-| **Circle View** | `/circles/:slug/decisions` | `CircleView` | Circle's decisions, filterable by all/open |
-| **Circle View** | `/circles/:slug/commitments` | `CircleView` | Circle's commitments |
+| **Circle Decisions** | `/circles/:slug/decisions` | `CircleView` | Circle's decisions, filterable by all/open, with session links |
+| **Circle Commitments** | `/circles/:slug/commitments` | `CircleView` | Circle's commitments with owner, due date, and status |
 | **Decision Detail** | `/circles/:slug/decisions/:decisionSlug` | `DecisionDetail` | Full decision view with overview, commitments, and activity tabs |
 | **Commitment Review** | `/circles/:slug/commitments/:commitmentSlug` | `CommitmentReview` | Commitment view with overview and activity tabs |
 | **Sessions List** | `/circles/:slug/sessions` | `SessionsList` | Paginated list of circle sessions (also `/upcoming` and `/previous` variants) |
@@ -45,14 +45,23 @@ Full-width editable strategy document using the TipTap markdown editor. A sticky
 
 Table of all circles. Columns: circle name, membership status (Joined badge or Join button), purpose badge, cadence, and stacked member avatars (max 6 shown with +N overflow). Clicking a row navigates to that circle's decisions.
 
-### Circle View
+### Circle Decisions
 
-The primary workspace for a circle. Section (decisions or commitments) is derived from the URL path. In decisions mode:
+The primary decision workspace for a circle. Shows all decisions belonging to this circle with filter tabs to narrow the view.
 
-- **Decision filter tabs** — All decisions / Open (excludes Taken and Superseded)
+- **Decision filter tabs** — "All decisions" (everything) / "Open" (excludes Taken and Superseded)
+- **Session links** — each decision shows its linked session number and date as a clickable badge
+- **Columns** — ref, statement, session, owner (PersonField avatar), status badge, age
+- **[New Decision] button** in header
 - Each decision links to its full detail view
 
-In commitments mode, shows all commitments for the circle.
+### Circle Commitments
+
+The commitment tracking view for a circle. Shows all commitments belonging to this circle.
+
+- **Columns** — ref, outcome, decision ref, owner (PersonField avatar), due date, status badge
+- No filter tabs (yet) — shows all commitments
+- Each commitment links to its review view
 
 ### Decision Detail
 

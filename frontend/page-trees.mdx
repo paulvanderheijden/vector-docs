@@ -107,22 +107,40 @@ Page body
 
 ---
 
-## Circle View `/circles/:slug/decisions` or `/circles/:slug/commitments`
+## Circle Decisions `/circles/:slug/decisions`
 
-Circle's decisions or commitments, section derived from URL path.
+Circle's decisions, filterable by all/open.
 
 ```
 PageHeader (via usePageHeader)
 ├── PageHeaderRow
-│   ├── PageHeaderGroup: circle icon + "Circle > Decisions" + decision filter tabs
-│   └── PageHeaderGroup: [New Decision] button (decisions section only)
+│   ├── PageHeaderGroup: circle icon + "Circle > Decisions" + filter tabs (All decisions / Open)
+│   └── PageHeaderGroup: [New Decision] button
 └── PageHeaderRow
     ├── PageHeaderGroup: Filter popover
     └── PageHeaderGroup: Display popover
 
-Page body (conditional on section)
-├── DecisionsTable (showCircle=false, showSession, noDividers)   ← decisions
-└── CommitmentsTable (showCircle=false, noDividers)              ← commitments
+Page body
+└── DecisionsTable (showCircle=false, showSession, noDividers)
+```
+
+---
+
+## Circle Commitments `/circles/:slug/commitments`
+
+Circle's commitments.
+
+```
+PageHeader (via usePageHeader)
+├── PageHeaderRow
+│   ├── PageHeaderGroup: circle icon + "Circle > Commitments"
+│   └── PageHeaderGroup: (empty)
+└── PageHeaderRow
+    ├── PageHeaderGroup: Filter popover
+    └── PageHeaderGroup: Display popover
+
+Page body
+└── CommitmentsTable (showCircle=false, noDividers)
 ```
 
 ---
