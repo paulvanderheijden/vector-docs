@@ -1,80 +1,162 @@
 ---
-title: "Components"
-description: "Shared components and patterns in the Vector frontend."
+title: "Components & Patterns"
+description: "Core component APIs and UI patterns used across the Vector frontend."
 ---
+
+<Note>
+  For the full list of every component with usage locations, see [Component Inventory](/frontend/component-inventory).
+  For per-page component trees, see [Page Component Trees](/frontend/page-trees).
+</Note>
 
 ## Core components
 
 ### DataTable
 
-Generic data table built on TanStack React Table. Used across all list views.
+`src/components/ui/data-table.tsx`
 
-| Prop | Type | Description |
-|---|---|---|
-| `columns` | ColumnDef[] | Column definitions |
-| `data` | T[] | Row data |
-| `onReorder` | (from, to) => void | Enables drag-and-drop reordering via @dnd-kit |
-| `getRowId` | (row) => string | Stable ID function for sortable rows |
-| `showSelect` | boolean | Show row selection checkboxes (default `true`) |
-| `showDragHandle` | boolean | Show drag handle column (default `true`) |
-| `showHeader` | boolean | Show table header row (default `true`) |
+Generic data table built on TanStack React Table. Used directly for custom table layouts (CirclesList, InitiativesList, ProjectsList, SessionsList, InitiativeDetail) and as the base for `DecisionsTable` and `CommitmentsTable`.
 
-When `onReorder` is provided, rows become draggable via `@dnd-kit/sortable`. Each row is wrapped in a `SortableRow` sub-component. Stable IDs (via `getRowId`) are required for correct drag behavior — array indices don't work because they don't change after reorder.
+| Prop | Type | Default | Description |
+|---|---|---|---|
+| `columns` | `ColumnDef<TData, TValue>[]` | required | Column definitions |
+| `data` | `TData[]` | required | Row data |
+| `onRowClick` | `(row: TData) => void` | — | Row click handler (adds `cursor-pointer`) |
+| `columnVisibility` | `VisibilityState` | — | TanStack column visibility state |
+| `grouping` | `GroupingState` | — | Column IDs to group by (enables grouped rows) |
+| `renderGroupRow` | `(row, colSpan) => ReactNode` | — | Custom render for group header rows |
+| `emptyMessage` | `string` | `"No results."` | Text shown when data is empty |
+| `noDividers` | `boolean` | `false` | Remove row border-bottom dividers |
+| `onReorder` | `(fromIndex, toIndex) => void` | — | Enable drag-and-drop reordering via @dnd-kit |
+| `getRowId` | `(row: TData) => string` | — | Stable ID function for sortable rows |
+| `showSelect` | `boolean` | `true` | Prepend row selection checkbox column |
+| `showDragHandle` | `boolean` | `true` | Prepend drag handle column (only when `onReorder` is set) |
+| `showHeader` | `boolean` | `true` | Show table header row |
+
+**Features:**
+- **Sorting** — click column headers to sort ascending/descending (arrow indicators)
+- **Row selection** — checkbox column with select-all in header
+- **Drag-and-drop** — when `onReorder` is provided, rows become draggable via `@dnd-kit/sortable`. Stable IDs (via `getRowId`) are required — array indices don't work because they don't change after reorder
+- **Grouping** — when `grouping` is set, rows are grouped with collapsible group headers. `renderGroupRow` allows custom group row rendering (e.g. initiative name + project count in ProjectsList)
+- **Column meta** — columns can set `meta.headerClassName` and `meta.cellClassName` for per-column styling
 
 ### DecisionsTable
 
-Wraps DataTable for decision lists. Handles column configuration and visibility.
+`src/components/DecisionsTable.tsx`
 
-| Prop | Type | Description |
-|---|---|---|
-| `decisions` | Decision[] | Decision data |
-| `showCircle` | boolean | Show circle column |
-| `showSession` | boolean | Show session column |
-| `showAge` | boolean | Show age column |
-| `combinedStatusOwner` | boolean | Combine status + sponsor in one column |
-| `onReorder` | (from, to) => void | Enable reordering |
-| `onDecisionClick` | (decision) => void | Row click handler |
+Wraps `DataTable` for decision lists. Provides decision-specific columns with configurable visibility.
+
+**Columns:** ref (e.g. DEC-1), statement (link or click handler), circle, session (link badge), owner (PersonSelector avatar), status (Badge), age (colored by threshold).
+
+| Prop | Type | Default | Description |
+|---|---|---|---|
+| `decisions` | `Decision[]` | required | Decision data |
+| `showCircle` | `boolean` | `true` | Show circle column |
+| `showSession` | `boolean` | `false` | Show session link column |
+| `showAge` | `boolean` | `true` | Show age column |
+| `noDividers` | `boolean` | — | Remove row dividers |
+| `onReorder` | `(from, to) => void` | — | Enable drag-and-drop |
+| `onDecisionClick` | `(decision) => void` | — | Click handler (replaces default Link navigation) |
+| `showSelect` | `boolean` | — | Show row selection checkboxes |
+| `showDragHandle` | `boolean` | — | Show drag handle |
+| `showHeader` | `boolean` | — | Show table header |
+| `combinedStatusOwner` | `boolean` | `false` | Merge status Badge + owner avatar into a single right-aligned column (hides individual status, owner, and age columns) |
 
 ### CommitmentsTable
 
-Wraps DataTable for commitment lists. Same pattern as DecisionsTable.
+`src/components/CommitmentsTable.tsx`
 
-| Prop | Type | Description |
-|---|---|---|
-| `commitments` | Commitment[] | Commitment data |
-| `showOwner` | boolean | Show owner column |
-| `showCircle` | boolean | Show circle column |
-| `showDecision` | boolean | Show decision column |
-| `combinedStatusOwner` | boolean | Combine decision ref + owner in one column |
+Wraps `DataTable` for commitment lists. Same pattern as DecisionsTable.
+
+**Columns:** ref (e.g. COM-1), outcome (link), decision ref, circle, owner (PersonSelector avatar), due date, status (Badge).
+
+| Prop | Type | Default | Description |
+|---|---|---|---|
+| `commitments` | `Commitment[]` | required | Commitment data |
+| `showOwner` | `boolean` | `true` | Show owner column |
+| `showCircle` | `boolean` | `true` | Show circle column |
+| `showDecision` | `boolean` | `true` | Show decision column |
+| `noDividers` | `boolean` | — | Remove row dividers |
+| `showSelect` | `boolean` | — | Show row selection checkboxes |
+| `showHeader` | `boolean` | — | Show table header |
+| `combinedStatusOwner` | `boolean` | `false` | Merge decision ref label + owner avatar into a single right-aligned column (hides individual owner, status, due, and decision columns) |
 
 ### AppSidebar
 
-Navigation sidebar using Radix Collapsible. Structure:
+`src/components/AppSidebar.tsx`
 
-- **My Items** — link to dashboard
-- **Circles** — expandable sections, one per circle
-  - Sessions (upcoming and recent)
+Navigation sidebar using shadcn `Sidebar*` primitives and Radix `Collapsible`.
+
+**Structure:**
+- **Header** — workspace logo + name ("Mews")
+- **Top links** — Inbox, My Items
+- **Workspace** (collapsible, default open) — Strategy, Initiatives, Projects, Circles
+- **Your Circles** (collapsible, default open) — one collapsible per user circle:
+  - Sessions — with nested Previous / Upcoming shortcuts (link to last completed or next upcoming session)
   - Decisions
   - Commitments
-- **Initiatives** — expandable sections, one per initiative
-  - Projects
 
-The first circle is expanded by default so new users immediately see the circle features.
+The first circle is expanded by default. Active route is highlighted via `location.pathname` matching. Session sub-items (Previous/Upcoming) highlight based on whether the currently viewed session is completed or not.
+
+---
 
 ## Patterns
 
+### Page header injection
+
+Every page uses the `usePageHeader` hook to inject its header content into the App shell's sticky header area. The hook accepts a `PageHeaderConfig` object and passes it up via React Router's Outlet context. The App shell renders this content in a fixed position above the scroll area.
+
+```tsx
+usePageHeader({
+  pageTitle: "Inbox",
+  headerContent: (
+    <PageHeader>
+      <PageHeaderRow>
+        <PageHeaderGroup>{/* left items */}</PageHeaderGroup>
+        <PageHeaderGroup>{/* right items */}</PageHeaderGroup>
+      </PageHeaderRow>
+    </PageHeader>
+  ),
+}, dependencyKey)
+```
+
+The second argument is a dependency key string that triggers re-renders when relevant state changes (e.g. active tab, filter values).
+
+### Header layout convention
+
+Most pages follow a two-row header:
+
+- **Row 1** — page title, tab switches (pill buttons), primary action button (e.g. "New Decision")
+- **Row 2** — Filter popover (left), Display popover (right)
+
+Tab switches are styled as small bordered pill buttons with active/inactive states. They are not a dedicated component — each page renders them inline with `cn()` conditional classes.
+
 ### Column visibility
 
-Tables use TanStack's column visibility to show/hide columns based on context. Props like `showCircle`, `showAge` map to `columnVisibility` state.
+Tables use TanStack's `columnVisibility` state to show/hide columns based on context. Wrapper components (DecisionsTable, CommitmentsTable) map boolean props like `showCircle`, `showAge` to the visibility state object.
 
 ### Combined columns
 
-On compact views (e.g., Session Detail), status and sponsor are combined into a single right-aligned column using the `combinedStatusOwner` prop. This shows a status badge followed by an avatar.
+On compact views (e.g. Session Detail), multiple columns are merged into a single right-aligned column using the `combinedStatusOwner` prop. For DecisionsTable this shows a status Badge + owner avatar. For CommitmentsTable this shows a decision ref label + owner avatar. When combined mode is active, the individual status, owner, due, and age columns are hidden.
+
+### Detail page layout
+
+Detail pages (DecisionDetail, CommitmentReview, InitiativeDetail, ProjectDetail) share a common structure:
+
+- **Tabs** in the page header (overview, commitments/activity, etc.)
+- **Main content** area with `max-w-[800px]` centered, shifts right margin when sidebar is open
+- **Right sidebar** — fixed-position 288px panel (or 480px for SessionDetail drawer), toggled via PanelRight icon button. Uses CSS transition on width for smooth slide. Contains `SidebarSection` / `PropertyRow` components.
 
 ### Inline editing
 
-Session titles use an inline-editable input — a text field styled to look like a heading that becomes editable on click. Controlled via local state.
+Two patterns are used:
+
+- **InlineText** — click-to-edit component that renders static text, switching to an input on click. Used for titles, summaries, descriptions. Supports `as="h1"`, `as="p"`, etc.
+- **PropertySelect** — click-to-open popover with options list. Used for status, health, owner, target, visibility. Each option can have an icon. Shows checkmark on selected value.
 
 ### Friendly dates
 
-The `friendlyDate` helper renders dates as "Today", "Tomorrow", "Yesterday", or "Mon DD" format for recent dates.
+The `friendlyDate` helper (in SessionDetail) renders dates as "Today", "Tomorrow", "Yesterday", or "Mon DD" format for recent dates. Used in session breadcrumbs.
+
+### Age color thresholds
+
+Decision age is color-coded: green (0–3 days), amber (4–7 days), red (8+ days). Implemented via `ageColor()` helper in mock-data and inline conditionals in detail pages.
