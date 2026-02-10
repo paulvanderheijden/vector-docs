@@ -1,11 +1,11 @@
 ---
 title: "Decisions"
-description: "Direction-setting artifacts that flow through forums until they're taken."
+description: "Direction-setting artifacts that flow through circles until they're taken."
 ---
 
 A **decision** is the primary atomic unit in Vector. It represents a direction-setting choice that needs to be made by a leadership team.
 
-Every decision has a clear title, a sponsor within the circle, and a forum where it's routed. Decisions age over time — the longer they sit unresolved, the more visible the pressure becomes.
+Every decision has a clear title, a circle where it's routed, and an age counter that starts ticking the moment it's formally requested. The longer a decision sits unresolved, the more visible the pressure becomes.
 
 ## Anatomy of a decision
 
@@ -13,13 +13,13 @@ Every decision has a clear title, a sponsor within the circle, and a forum where
 |---|---|
 | **Title** | What needs to be decided, written as a clear, actionable sentence |
 | **Description** | Background context, options, and rationale in markdown |
-| **Sponsor** | The circle member responsible for preparing and driving this decision to resolution |
-| **Owner** | The person broadly accountable for the decision area (optional) |
 | **Circle** | The circle where this decision is routed for discussion |
-| **Status** | Where the decision is in its lifecycle (Draft, Proposed, Scheduled, Rolled, Taken) |
-| **Age** | Days since creation — increases pressure visually |
-| **Requested by** | The person who raised the need for this decision |
-| **Requested date** | When the decision was requested |
+| **Status** | Where the decision is in its lifecycle (Draft, Requested, Scheduled, Rolled, Taken) |
+| **Age** | Days since the decision was formally requested (status moved to Requested) |
+| **Requested by** | The person who raised the need for this decision (set at creation) |
+| **Requested date** | Auto-set when the decision moves from Draft to Requested |
+| **Sponsor** | The circle member who prepares and drives this decision in a session (set when Scheduled) |
+| **Owner** | The person accountable for the decision after it's taken — tracks validity, can revoke (set when Taken) |
 | **References** | Files or links attached for context |
 | **Initiative / Project** | Context linkage to an initiative or project (optional) |
 
@@ -27,45 +27,51 @@ Every decision has a clear title, a sponsor within the circle, and a forum where
 
 <Steps>
   <Step title="Draft">
-    The decision has been created but isn't ready for forum discussion yet. The sponsor is still framing the problem, gathering context, or preparing options.
+    The decision has been created but isn't ready for circle discussion yet. The requestor is framing the problem and gathering initial context.
   </Step>
-  <Step title="Proposed">
-    The decision is ready and has been routed to a forum. It's available for an upcoming session.
+  <Step title="Requested">
+    The decision is formally submitted to a circle. The age counter starts ticking. It's available for an upcoming session.
   </Step>
   <Step title="Scheduled">
-    The decision has been placed on a specific session's agenda. The sponsor has confirmed it's ready for discussion.
+    The decision has been placed on a specific session's agenda. A sponsor is assigned — the circle member who will prepare and drive it in the session.
   </Step>
   <Step title="Rolled">
     The decision was on the agenda but wasn't resolved in the session. It rolls to the next session — the age counter keeps ticking.
   </Step>
   <Step title="Taken">
-    The forum has made the call. The decision is closed and commitments may be created from it.
+    The circle has made the call. An owner is assigned — the person accountable for the decision going forward. The decision is closed and commitments may be created from it.
   </Step>
 </Steps>
 
 ## The three roles
 
-Decisions involve three distinct roles. Keeping them separate is critical to how Vector works.
+Decisions involve three distinct roles, each set at a different point in the lifecycle.
 
-### Requestor
+### Requestor (set at creation)
 
-The person who raised the need. They create pull ("we need a decision on X because Y is blocked"), but they don't own the decision. Every decision has a requestor — the system always tracks who surfaced the issue.
+The person who raised the need. They create pull ("we need a decision on X because Y is blocked"). Every decision has a requestor — the system always tracks who surfaced the issue. The requestor is informed when the decision is taken.
 
-### Sponsor
+### Sponsor (set when Scheduled)
 
-The circle member responsible for getting the decision **prepared and resolved**. They ensure it's framed, has the right context, and is driven to a resolution in a session. They are the person who should feel uncomfortable if it stalls.
+The circle member responsible for getting the decision **prepared and resolved** in a session. They ensure it's framed, has the right context, and is driven to a resolution. The sponsor must be a member of the decision's circle.
 
 <Note>
   The sponsor owns the act of deciding, not the lifetime of the decision. Once taken, their job is done.
 </Note>
 
-### Outcome accountable
+### Owner (set when Taken)
 
-Handled via [commitments](/concepts/commitments), not decision sponsorship. Once a decision is taken, commitments are created and commitment owners execute and monitor.
+The person broadly accountable for the decision after it's taken. They track whether the decision holds up over time and are authorized to revoke it if needed. If reality changes, the owner can raise a revisit decision.
+
+<Note>
+  The owner is not the same as the commitment owners who execute on the decision. The owner watches over the decision itself — was it the right call?
+</Note>
 
 ## Age and pressure
 
-Every decision has an age counter (in days) that starts at creation. Vector uses color coding to make aging visible:
+Every decision has an age counter (in days) that starts when it moves to **Requested** status. While in Draft, there is no age — the decision hasn't been formally submitted yet.
+
+Vector uses color coding to make aging visible:
 
 - **Green** — fresh, within expected timeframe
 - **Amber** — aging, needs attention

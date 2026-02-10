@@ -9,39 +9,37 @@ Every decision in Vector follows a clear lifecycle. The system is designed so de
 
 <Steps>
   <Step title="A need is raised">
-    Someone identifies that a decision needs to be made. This could be a team lead whose project is blocked, an executive spotting a strategic fork, or a forum surfacing an unresolved question.
+    Someone identifies that a decision needs to be made. This could be a team lead whose project is blocked, an executive spotting a strategic fork, or a circle surfacing an unresolved question.
 
     The **requestor** frames the need: "We need to decide X because Y."
   </Step>
   <Step title="A decision is created (Draft)">
-    The decision is created in Vector with a clear title. A **sponsor** is assigned — the circle member accountable for getting it prepared and resolved.
+    The decision is created in Vector with a clear title. The requestor is recorded automatically.
 
-    At this stage the decision is a **Draft**. The sponsor gathers context, frames options, and prepares it for forum discussion.
-
-    **The age counter starts ticking.**
+    At this stage the decision is a **Draft**. The requestor (or anyone helping) gathers context, frames options, and prepares it for circle discussion. There is no age counter yet — the decision hasn't been formally submitted.
   </Step>
-  <Step title="Routed to a forum (Proposed)">
-    The sponsor routes the decision to the appropriate [circle](/concepts/circles). It moves to **Proposed** status and is available for an upcoming session.
+  <Step title="Formally submitted (Requested)">
+    The decision moves to **Requested** status and is routed to the appropriate [circle](/concepts/circles). The `requested_date` is auto-set to the current timestamp.
 
-    The sponsor chooses the forum based on who needs to be in the room. A product decision goes to Product Forum. A cross-functional resource allocation goes to MT Weekly.
+    **The age counter starts ticking.** The decision is now available for an upcoming session.
   </Step>
   <Step title="Placed on the agenda (Scheduled)">
-    The decision is placed on a specific session's agenda. It moves to **Scheduled** status. The sponsor has confirmed it's ready for discussion.
+    A circle organizer places the decision on a specific session's agenda. It moves to **Scheduled** status. A **sponsor** is assigned — the circle member who will prepare and drive the discussion in the session.
   </Step>
   <Step title="Discussed in session">
-    The decision is discussed in a [session](/concepts/sessions). The forum reviews the context, debates options, and works toward resolution.
+    The decision is discussed in a [session](/concepts/sessions). The sponsor presents the context, the circle debates options, and they work toward resolution.
 
     Two outcomes are possible:
   </Step>
   <Step title="Outcome A: Taken">
-    The forum makes the call. The decision moves to **Taken** status.
+    The circle makes the call. The decision moves to **Taken** status. An **owner** is assigned — the person accountable for the decision going forward.
 
-    The sponsor's job is now done. [Commitments](/concepts/commitments) are created to execute on the decision — each with its own owner and due date. The decision is closed.
+    [Commitments](/concepts/commitments) are created to execute on the decision — each with its own owner and due date. The decision is closed.
   </Step>
   <Step title="Outcome B: Rolled">
-    The forum didn't resolve it in this session — it needs more time, more context, or more people. The decision moves to **Rolled** status and carries over to the next session.
+    The circle didn't resolve it in this session — it needs more time, more context, or more people. The decision moves to **Rolled** status and carries over to the next session.
 
-    The age keeps ticking. Rolled decisions create visible pressure — the forum must address them.
+    The age keeps ticking. Rolled decisions create visible pressure — the circle must address them.
   </Step>
 </Steps>
 
@@ -49,10 +47,11 @@ Every decision in Vector follows a clear lifecycle. The system is designed so de
 
 Once taken, the decision is closed. The system transitions from decision mode to execution mode:
 
-1. **Commitments are created** — concrete outcomes with owners and due dates
-2. **The sponsor's job ends** — they are no longer responsible
-3. **Commitment owners take over** — they execute, report, and are reviewed in sessions
-4. **If reality changes** — a new decision is raised, potentially as a "revisit" linked to the original
+1. **An owner is assigned** — the person who tracks whether the decision holds up over time and can revoke it
+2. **Commitments are created** — concrete outcomes with owners and due dates
+3. **The sponsor's job ends** — they are no longer responsible
+4. **Commitment owners take over** — they execute, report, and are reviewed in sessions
+5. **If reality changes** — the decision owner raises a new decision as a "revisit" linked to the original
 
 <Note>
   There are no zombie decisions in Vector. A decision is either actively moving through its lifecycle or it's been taken. If a taken decision needs revisiting, a new decision is created with an explicit revisit link.
@@ -61,23 +60,23 @@ Once taken, the decision is closed. The system transitions from decision mode to
 ## Status flow diagram
 
 ```
-Draft → Proposed → Scheduled → Taken
-                             ↘ Rolled → (re-enters at Scheduled for the next session)
+Draft → Requested → Scheduled → Taken
+                              ↘ Rolled → (re-enters at Scheduled for the next session)
 ```
 
-## Sponsor defaults
+## When each role is set
 
-| Scenario | Default sponsor |
-|---|---|
-| Decision affects a specific initiative | A circle member close to that initiative |
-| Decision raised by someone outside the circle | The circle organizer assigns a sponsor |
-| Cross-cutting decision in MT | The CEO or relevant executive |
+| Role | Set at | Responsibility |
+|---|---|---|
+| **Requestor** | Draft created | Raised the need; gets informed of the outcome |
+| **Sponsor** | Scheduled into session | Prepares and drives the decision in the session |
+| **Owner** | Decision taken | Tracks long-term validity; can revoke the decision |
 
 The requestor is **never** the default sponsor. The requestor creates pull; the sponsor ensures resolution.
 
 ## Age as pressure
 
-The age counter is the primary forcing function. It's visible everywhere a decision appears:
+The age counter starts when the decision moves to **Requested** — not when the draft is created. It's visible everywhere a decision appears:
 
 | Age | Signal |
 |---|---|

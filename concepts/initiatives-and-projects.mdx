@@ -14,7 +14,7 @@ An initiative is a strategic bet — a high-level objective the organization is 
 | **Name** | The initiative's title |
 | **Status** | Planned, Active, or Completed |
 | **Target date** | Flexible granularity: month, quarter, or year |
-| **Visibility** | Public (everyone can see) or Restricted (subscribers + owner only) |
+| **Circles** | Circles linked to this initiative (for restricted visibility) |
 
 Initiatives contain one or more projects. They represent the "why" — the strategic direction.
 
@@ -31,10 +31,19 @@ A project is an execution container that belongs to exactly one initiative. It r
 |---|---|
 | **Name** | The project's title |
 | **Initiative** | The parent initiative (required, exactly one) |
-| **Visibility** | Public or Restricted (independent of initiative visibility) |
 | **Lead** | The person responsible for the project |
+| **Circles** | Circles linked to this project (for restricted visibility) |
 
-Projects can have **updates** — status reports posted by the project lead or team members that track progress over time.
+Projects can have **updates** — status reports posted by the project lead that track progress over time.
+
+### Project updates
+
+| Field | Description |
+|---|---|
+| **Date** | When the update was posted |
+| **Author** | The person who wrote the update (typically the project lead) |
+| **Health** | On track, At risk, or Off track |
+| **Content** | The update body in markdown |
 
 ## Linking to decisions and commitments
 
@@ -46,9 +55,9 @@ For example:
 
 ## Visibility
 
-Both initiatives and projects support visibility controls:
+By default, initiatives and projects are **visible to all workspace members**. To restrict access, link one or more circles to the initiative or project — only members of those circles will be able to see it.
 
-- **Public** — visible to everyone in the organization
-- **Restricted** — only visible to explicit subscribers plus the owner/lead
+- **No linked circles** → visible to all workspace members (public)
+- **Has linked circles** → visible only to members of the linked circles (restricted)
 
 Project visibility is independent of its parent initiative. A public initiative can contain restricted projects, and vice versa.

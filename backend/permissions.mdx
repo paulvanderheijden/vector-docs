@@ -55,8 +55,8 @@ These are not levels in a hierarchy — they're independent contexts that combin
 | Action | Workspace Member | Circle Member | Circle Organizer |
 |---|---|---|---|
 | View public initiatives/projects | yes | yes | yes |
-| View restricted initiatives/projects | only if subscriber | only if subscriber | only if subscriber |
-| Create project updates | yes (if project member) | yes (if project member) | yes (if project member) |
+| View restricted initiatives/projects | only if member of a linked circle | only if member of a linked circle | only if member of a linked circle |
+| Create project updates | yes (if project lead) | yes (if project lead) | yes (if project lead) |
 
 ### Workspace (Admin only)
 
@@ -98,11 +98,17 @@ Can this person invite new members to the workspace?
 
 | Rule | Enforced by |
 |---|---|
-| A decision sponsor must be a member of the decision's circle | `sponsorPersonId` must be in `circle.members` |
+| A decision sponsor must be a member of the decision's circle | `sponsorPersonId` must be in `circle.members` (set when Scheduled) |
 | A commitment owner must be a member of the review circle | `ownerPersonId` must be in `reviewCircle.members` |
 | Circle content is only visible to circle members | Query filtering by membership |
 | Only organizers can manage session agendas | Role check on `circle.members` |
 | Only workspace admins can manage workspace settings | Role check on `WorkspaceMember` |
+
+## Soft-delete and disabled members
+
+Workspace members are never hard-deleted. When a person is removed from a workspace, their `workspace_members.status` is set to `Disabled`. The RLS helper function `is_workspace_member()` only returns true for members with `status = 'Active'`, which immediately revokes all permissions derived from workspace membership.
+
+Historical references (e.g., requestor or sponsor on past decisions) remain intact because the person record is not deleted.
 
 ## What happens when membership changes
 
@@ -112,7 +118,7 @@ Can this person invite new members to the workspace?
 | Person added to a circle | Immediately sees all circle content (decisions, commitments, sessions). |
 | Person promoted to organizer | Gains session management capabilities in that circle. |
 | Person demoted from organizer to member | Loses session management capabilities but retains all member access. |
-| Person removed from workspace | Loses all access. All circle memberships are removed. Sponsorships and commitments should be reassigned. |
+| Person disabled in workspace | Loses all active access (soft-delete via `status = 'Disabled'`). Historical references preserved. Active decision ownerships and commitment ownerships must be reassigned — the reassignment flow is not yet designed (deferred). |
 
 ## Why not explicit roles?
 

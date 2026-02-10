@@ -23,10 +23,8 @@ This page maps the relationships between all entities in Vector. Understanding t
 | Workspace → Decision | 1 to many | Every decision belongs to a workspace |
 | Workspace → Commitment | 1 to many | Every commitment belongs to a workspace |
 | Initiative → Project | 1 to many | A project belongs to exactly one initiative |
-| Person ↔ Team | many to many | People can be on multiple teams |
-| Project ↔ Team | many to many | Teams can be involved in multiple projects (signal, not ownership) |
-| Initiative ↔ Person (subscribers) | many to many | For restricted visibility |
-| Project ↔ Person (subscribers) | many to many | For restricted visibility |
+| Initiative ↔ Circle | many to many | Linked circles restrict visibility; no circles = public |
+| Project ↔ Circle | many to many | Linked circles restrict visibility; no circles = public |
 | Circle → CircleMember | 1 to many | Each member has a role: Member or Organizer |
 
 ## Decision system
@@ -34,9 +32,9 @@ This page maps the relationships between all entities in Vector. Understanding t
 | Relationship | Cardinality | Notes |
 |---|---|---|
 | Circle → Decision | 1 to many | A decision lives in exactly one circle at a time |
-| Person → Decision (sponsor) | 1 to many | A decision must have exactly one sponsor |
-| Person → Decision (owner) | 0 to many | A decision has zero or one owner |
-| Person → Decision (requestor) | 1 to many | A decision must have exactly one requestor |
+| Person → Decision (requestor) | 1 to many | Set at creation. The person who raised the need. |
+| Person → Decision (sponsor) | 0 to many | Set when Scheduled. The circle member driving the discussion. Nullable until then. |
+| Person → Decision (owner) | 0 to many | Set when Taken. Tracks long-term validity, can revoke. Nullable until then. |
 | Initiative/Project → Decision | 0 to many | Optional context linkage |
 | Decision → Decision (revisit) | 0 to 1 | Self-referential revisit chain |
 
@@ -54,9 +52,8 @@ This page maps the relationships between all entities in Vector. Understanding t
 | Relationship | Cardinality | Notes |
 |---|---|---|
 | Circle → Session | 1 to many | A circle has zero or many sessions |
-| Session ↔ Decision | many to many | Decisions reviewed in a session |
+| Session ↔ Decision | many to many | Decisions on the session agenda |
 | Session ↔ Commitment | many to many | Commitments reviewed in a session |
-| Session ↔ Person (attendance) | many to many | Who attended the session |
 
 ## Project updates
 
@@ -64,6 +61,16 @@ This page maps the relationships between all entities in Vector. Understanding t
 |---|---|---|
 | Project → Project Update | 1 to many | Zero or many updates per project |
 | Person → Project Update (author) | 1 to many | Each update has exactly one author |
+
+## Activity events
+
+| Relationship | Cardinality | Notes |
+|---|---|---|
+| Person → Activity Event (actor) | 1 to many | Every event has exactly one actor |
+| Activity Event → any entity | polymorphic | `entity_type` + `entity_id` reference any entity |
+| Workspace → Activity Event | 1 to many | Events are workspace-scoped |
+
+Activity events are append-only — they are never updated or deleted.
 
 ## Key design decisions
 
@@ -77,8 +84,12 @@ A decision needs a clear venue. If it could exist in multiple circles simultaneo
 
 ### Why commitments can be standalone
 
-Not every action item comes from a formal decision. Forums create ad-hoc commitments regularly. Forcing a parent decision would add friction without value.
+Not every action item comes from a formal decision. Circles create ad-hoc commitments regularly. Forcing a parent decision would add friction without value.
 
 ### Why the revisit chain is self-referential
 
 When a decision needs to be revisited, a new decision is created and linked to the original. This preserves the history of the original decision while keeping the new one in its own lifecycle with its own owner and age counter.
+
+### Why visibility uses circle links instead of a member list
+
+Rather than maintaining separate subscriber lists per initiative/project, visibility is controlled by linking circles. This leverages existing circle membership and avoids the overhead of managing individual access lists. No linked circles = public to the workspace; linked circles = restricted to those circles' members.

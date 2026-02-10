@@ -15,13 +15,14 @@ ALTER TABLE circles ENABLE ROW LEVEL SECURITY;
 ALTER TABLE circle_members ENABLE ROW LEVEL SECURITY;
 ALTER TABLE sessions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE initiatives ENABLE ROW LEVEL SECURITY;
-ALTER TABLE initiative_members ENABLE ROW LEVEL SECURITY;
+ALTER TABLE initiative_circles ENABLE ROW LEVEL SECURITY;
 ALTER TABLE projects ENABLE ROW LEVEL SECURITY;
-ALTER TABLE project_members ENABLE ROW LEVEL SECURITY;
+ALTER TABLE project_circles ENABLE ROW LEVEL SECURITY;
 ALTER TABLE decisions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE decision_references ENABLE ROW LEVEL SECURITY;
 ALTER TABLE commitments ENABLE ROW LEVEL SECURITY;
 ALTER TABLE project_updates ENABLE ROW LEVEL SECURITY;
+ALTER TABLE activity_events ENABLE ROW LEVEL SECURITY;
 ```
 
 ## Helper function
@@ -33,7 +34,7 @@ CREATE OR REPLACE FUNCTION is_workspace_member(ws_id uuid)
 RETURNS boolean AS $$
   SELECT EXISTS (
     SELECT 1 FROM workspace_members
-    WHERE workspace_id = ws_id AND person_id = auth.uid()
+    WHERE workspace_id = ws_id AND person_id = auth.uid() AND status = 'Active'
   );
 $$ LANGUAGE sql SECURITY DEFINER STABLE;
 
@@ -41,7 +42,7 @@ CREATE OR REPLACE FUNCTION is_workspace_admin(ws_id uuid)
 RETURNS boolean AS $$
   SELECT EXISTS (
     SELECT 1 FROM workspace_members
-    WHERE workspace_id = ws_id AND person_id = auth.uid() AND role = 'Admin'
+    WHERE workspace_id = ws_id AND person_id = auth.uid() AND role = 'Admin' AND status = 'Active'
   );
 $$ LANGUAGE sql SECURITY DEFINER STABLE;
 
@@ -207,17 +208,22 @@ CREATE POLICY "Owners and organizers update commitments" ON commitments
   );
 ```
 
-### Initiatives & Projects
+### Initiatives
 
-Public initiatives/projects are visible to all workspace members. Restricted ones require explicit membership.
+Visible to all workspace members when no circles are linked. Restricted to linked circle members when circles are linked.
 
 ```sql
-CREATE POLICY "Workspace members see public initiatives" ON initiatives
+CREATE POLICY "Workspace members see initiatives" ON initiatives
   FOR SELECT USING (
     is_workspace_member(workspace_id)
-    AND (visibility = 'Public' OR id IN (
-      SELECT initiative_id FROM initiative_members WHERE person_id = auth.uid()
-    ))
+    AND (
+      NOT EXISTS (SELECT 1 FROM initiative_circles WHERE initiative_id = id)
+      OR id IN (
+        SELECT ic.initiative_id FROM initiative_circles ic
+        JOIN circle_members cm ON ic.circle_id = cm.circle_id
+        WHERE cm.person_id = auth.uid()
+      )
+    )
   );
 
 CREATE POLICY "Admins manage initiatives" ON initiatives
@@ -227,13 +233,22 @@ CREATE POLICY "Admins update initiatives" ON initiatives
   FOR UPDATE USING (is_workspace_admin(workspace_id));
 ```
 
+### Projects
+
+Same visibility pattern as initiatives — public unless circles are linked.
+
 ```sql
-CREATE POLICY "Workspace members see public projects" ON projects
+CREATE POLICY "Workspace members see projects" ON projects
   FOR SELECT USING (
     is_workspace_member(workspace_id)
-    AND (visibility = 'Public' OR id IN (
-      SELECT project_id FROM project_members WHERE person_id = auth.uid()
-    ))
+    AND (
+      NOT EXISTS (SELECT 1 FROM project_circles WHERE project_id = id)
+      OR id IN (
+        SELECT pc.project_id FROM project_circles pc
+        JOIN circle_members cm ON pc.circle_id = cm.circle_id
+        WHERE cm.person_id = auth.uid()
+      )
+    )
   );
 ```
 
@@ -247,15 +262,24 @@ CREATE POLICY "Project viewers see updates" ON project_updates
     project_id IN (SELECT id FROM projects)  -- RLS on projects handles filtering
   );
 
-CREATE POLICY "Project members create updates" ON project_updates
+CREATE POLICY "Project leads create updates" ON project_updates
   FOR INSERT WITH CHECK (
     project_id IN (
       SELECT id FROM projects WHERE lead_person_id = auth.uid()
     )
-    OR project_id IN (
-      SELECT project_id FROM project_members WHERE person_id = auth.uid()
-    )
   );
+```
+
+### Activity events
+
+Workspace members can see activity events in their workspace. Events are insert-only — no updates or deletes.
+
+```sql
+CREATE POLICY "Workspace members see activity events" ON activity_events
+  FOR SELECT USING (is_workspace_member(workspace_id));
+
+CREATE POLICY "System inserts activity events" ON activity_events
+  FOR INSERT WITH CHECK (is_workspace_member(workspace_id));
 ```
 
 ## Testing policies

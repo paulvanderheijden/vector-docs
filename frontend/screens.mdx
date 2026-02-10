@@ -10,7 +10,7 @@ description: "Overview of all screens in the Vector frontend."
 | **My Dashboard** | `/` | Personal control view — decisions you own/sponsor, commitments due, items needing attention |
 | **Circle View** | `/circles/{id}` | Circle overview — upcoming/previous sessions, decisions routed here, commitments under review |
 | **Session Detail** | `/circles/{circleId}/sessions/{id}` | Meeting workspace — reorderable decision agenda, commitment review, meeting notes editor |
-| **Decision Detail** | `/decisions/{id}` | Full decision view — title, description, references, status, sponsor, forum, linked commitments |
+| **Decision Detail** | `/decisions/{id}` | Full decision view — title, description, references, status, sponsor, circle, linked commitments |
 | **Initiative View** | `/initiatives/{id}` | Initiative overview — projects, linked decisions, health |
 | **Project View** | `/projects/{id}` | Project detail — updates, linked decisions and commitments, team |
 
@@ -49,7 +49,7 @@ Full context view for a single decision:
 - Header with title, status badge, age indicator
 - Description (markdown)
 - Sponsor, owner (if set), requestor
-- Forum and linked initiative/project
+- Circle and linked initiative/project
 - References (files and links)
 - Linked commitments that flow from this decision
 - Revisit chain (if this is a revisit of a previous decision)
@@ -61,7 +61,7 @@ Strategic overview of an initiative and its projects:
 - Status, target date, visibility
 - List of projects with lead and latest health
 - Linked decisions across all projects
-- Member list
+- Linked circles (for restricted visibility)
 
 ### Project View
 
