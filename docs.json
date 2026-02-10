@@ -16,6 +16,7 @@
           {
             "group": "Getting started",
             "pages": [
+              "test-page",
               "index",
               "quickstart",
               "development"
@@ -49,15 +50,15 @@
       },
       {
         "tab": "API reference",
-        "groups": [
+        "products": [
           {
-            "group": "API documentation",
+            "product": "API documentation",
             "pages": [
               "api-reference/introduction"
             ]
           },
           {
-            "group": "Endpoint examples",
+            "product": "Endpoint examples",
             "pages": [
               "api-reference/endpoint/get",
               "api-reference/endpoint/create",
@@ -67,21 +68,7 @@
           }
         ]
       }
-    ],
-    "global": {
-      "anchors": [
-        {
-          "anchor": "Documentation",
-          "href": "https://mintlify.com/docs",
-          "icon": "book-open-cover"
-        },
-        {
-          "anchor": "Blog",
-          "href": "https://mintlify.com/blog",
-          "icon": "newspaper"
-        }
-      ]
-    }
+    ]
   },
   "logo": {
     "light": "/logo/light.svg",
@@ -112,11 +99,7 @@
      "vscode"
    ]
   },
-  "footer": {
-    "socials": {
-      "x": "https://x.com/mintlify",
-      "github": "https://github.com/mintlify",
-      "linkedin": "https://linkedin.com/company/mintlify"
-    }
+  "fonts": {
+    "family": "Inter"
   }
 }
