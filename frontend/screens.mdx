@@ -90,7 +90,15 @@ Paginated list of sessions for a circle. Three URL variants render the same comp
 - `/circles/:slug/sessions/upcoming` — future sessions only
 - `/circles/:slug/sessions/previous` — past sessions only
 
-Table columns: session number, title, date, decision count, commitment count, completed check. 10 sessions per page with Previous/Next pagination.
+Table columns: session number, title (with badge), date, decision count, commitment count, completed check. 10 sessions per page with Previous/Next pagination.
+
+Exactly one session per circle can carry each badge:
+
+- **Previous** (green badge) — the last session in the past with `completed=true`
+- **Current** (amber badge) — today's session, or the most recent past session with `completed=false` (i.e. a missed session). Only appears when one exists.
+- **Upcoming** (blue badge) — the next session strictly in the future
+
+A session cannot be marked as completed when its date is in the future.
 
 ### Session Detail
 

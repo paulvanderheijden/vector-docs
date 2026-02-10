@@ -17,7 +17,7 @@ App
 │   │       ├── Collapsible: Workspace (Strategy, Initiatives, Projects, Circles)
 │   │       └── Collapsible: Your Circles
 │   │           └── Collapsible (per circle)
-│   │               ├── Sessions > Previous / Upcoming
+│   │               ├── Sessions > Previous / Current (if exists) / Upcoming
 │   │               ├── Decisions
 │   │               └── Commitments
 │   └── SidebarInset
@@ -235,7 +235,7 @@ PageHeader (via usePageHeader)
 
 Page body (max-w-800)
 ├── DataTable (direct usage, custom columns)
-│   └── Columns: #number, title, date, decisions count, commitments count, completed check
+│   └── Columns: #number, title + Badge (Previous green / Current amber / Upcoming blue), date, decisions count, commitments count, completed check
 └── Pagination controls (Previous / Next buttons)
 ```
 
