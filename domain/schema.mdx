@@ -22,6 +22,14 @@ This is the conceptual schema for Vector V1. It describes the entities and their
 
 ## Entity details
 
+### Workspace
+
+| Field  | Type   | Required |
+| ------ | ------ | -------- |
+| `name` | string | yes      |
+| `slug` | string | yes      |
+| `logo` | string | no       |
+
 ### Person
 
 | Field      | Type   | Required |
@@ -31,17 +39,20 @@ This is the conceptual schema for Vector V1. It describes the entities and their
 
 ### Circle
 
-| Field     | Type     | Required |
-| --------- | -------- | -------- |
-| `name`    | string   | yes      |
-| `cadence` | string   | yes      |
-| `members` | Person[] | yes      |
+| Field         | Type             | Required |
+| ------------- | ---------------- | -------- |
+| `workspaceId` | Workspace        | yes      |
+| `name`        | string           | yes      |
+| `cadence`     | string           | yes      |
+| `members`     | CircleMember[]   | yes      |
+
+A **CircleMember** is `{ personId, role }` where role is `Member` or `Organizer`. Organizers are members with elevated rights — they are responsible for preparing sessions, setting the agenda, ensuring decisions are ready, and reviewing commitments before the meeting.
 
 ### Session
 
 | Field           | Type         | Required |
 | --------------- | ------------ | -------- |
-| `number`        | integer      | yes      |
+| `number`        | integer (generated) | yes |
 | `circleId`      | Circle       | yes      |
 | `title`         | string       | yes      |
 | `date`          | date         | yes      |
@@ -50,21 +61,25 @@ This is the conceptual schema for Vector V1. It describes the entities and their
 | `notes`         | markdown     | —        |
 | `completed`     | boolean      | yes      |
 
+Session numbers are auto-generated per circle, starting at 1. Each circle has its own independent sequence.
+
 ### Initiative
 
-| Field        | Type                                | Required |
-| ------------ | ----------------------------------- | -------- |
-| `name`       | string                              | yes      |
-| `status`     | `Planned`, `Active`, or `Completed` | yes      |
-| `targetDate` | string                              | yes      |
-| `visibility` | `Public` or `Restricted`            | yes      |
-| `members`    | Person[]                            | —        |
-| `projects`   | Project[]                           | —        |
+| Field          | Type                                | Required |
+| -------------- | ----------------------------------- | -------- |
+| `workspaceId`  | Workspace                           | yes      |
+| `name`         | string                              | yes      |
+| `status`       | `Planned`, `Active`, or `Completed` | yes      |
+| `targetDate`   | string                              | yes      |
+| `visibility`   | `Public` or `Restricted`            | yes      |
+| `members`      | Person[]                            | —        |
+| `projects`     | Project[]                           | —        |
 
 ### Project
 
 | Field          | Type                     | Required |
 | -------------- | ------------------------ | -------- |
+| `workspaceId`  | Workspace                | yes      |
 | `name`         | string                   | yes      |
 | `initiativeId` | Initiative               | yes      |
 | `visibility`   | `Public` or `Restricted` | yes      |
@@ -73,23 +88,32 @@ This is the conceptual schema for Vector V1. It describes the entities and their
 
 ### Decision
 
-| Field                 | Type                                                   | Required |
-| --------------------- | ------------------------------------------------------ | -------- |
-| `statement`           | string                                                 | yes      |
-| `status`              | `Draft`, `Proposed`, `Taken`, `Escalated`, `Delegated` | yes      |
-| `ownerPersonId`       | Person                                                 | yes      |
-| `forumId`             | Circle                                                 | yes      |
-| `requestedByPersonId` | Person                                                 | no       |
-| `initiativeId`        | Initiative                                             | no       |
-| `projectId`           | Project                                                | no       |
-| `revisitOfDecisionId` | Decision                                               | no       |
-| `ageDays`             | integer (computed)                                     | —        |
+| Field                 | Type                                                    | Required |
+| --------------------- | ------------------------------------------------------- | -------- |
+| `workspaceId`         | Workspace                                               | yes      |
+| `title`               | string                                                  | yes      |
+| `description`         | markdown                                                | no       |
+| `status`              | `Draft`, `Proposed`, `Scheduled`, `Rolled`, `Taken`     | yes      |
+| `ownerPersonId`       | Person                                                  | no       |
+| `sponsorPersonId`     | Person                                                  | yes      |
+| `forumId`             | Circle                                                  | yes      |
+| `requestedByPersonId` | Person                                                  | yes      |
+| `requestedDate`       | date                                                    | no       |
+| `initiativeId`        | Initiative                                              | no       |
+| `projectId`           | Project                                                 | no       |
+| `revisitOfDecisionId` | Decision                                                | no       |
+| `references`          | Reference[]                                             | —        |
+| `ageDays`             | integer (computed)                                      | —        |
+
+A **Reference** is a file or link attached to a decision for context (e.g., a document, spreadsheet, or external URL).
 
 ### Commitment
 
 | Field           | Type                                       | Required |
 | --------------- | ------------------------------------------ | -------- |
-| `outcome`       | string                                     | yes      |
+| `workspaceId`   | Workspace                                  | yes      |
+| `title`         | string                                     | yes      |
+| `description`   | markdown                                   | no       |
 | `status`        | `Active`, `At risk`, `Rolled`, `Delivered` | yes      |
 | `ownerPersonId` | Person                                     | yes      |
 | `reviewForumId` | Circle                                     | yes      |
@@ -100,14 +124,15 @@ This is the conceptual schema for Vector V1. It describes the entities and their
 
 | Field            | Type     | Required |
 | ---------------- | -------- | -------- |
-| `projectId`      | Project  | yes      |
-| `authorPersonId` | Person   | yes      |
-| `date`           | date     | yes      |
-| `content`        | markdown | yes      |
+| `projectId`      | Project                                    | yes      |
+| `authorPersonId` | Person                                     | yes      |
+| `date`           | date                                       | yes      |
+| `health`         | `On track`, `At risk`, or `Off track`      | yes      |
+| `content`        | markdown                                   | yes      |
 
 ## Hard constraints (V1)
 
-- A decision must have exactly **one owner**
+- A decision must have exactly **one sponsor**
 - A decision must have exactly **one active forum**
 - A commitment must have exactly **one owner**
 - A commitment must have exactly **one review forum**

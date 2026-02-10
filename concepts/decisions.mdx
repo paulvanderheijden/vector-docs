@@ -5,37 +5,41 @@ description: "Direction-setting artifacts that flow through forums until they're
 
 A **decision** is the primary atomic unit in Vector. It represents a direction-setting choice that needs to be made by a leadership team.
 
-Every decision has a clear statement, a single owner, and a forum where it's routed. Decisions age over time — the longer they sit unresolved, the more visible the pressure becomes.
+Every decision has a clear title, a sponsor within the circle, and a forum where it's routed. Decisions age over time — the longer they sit unresolved, the more visible the pressure becomes.
 
 ## Anatomy of a decision
 
 | Field | Description |
 |---|---|
-| **Statement** | What needs to be decided, written as a clear, actionable sentence |
-| **Owner** | The single person accountable for getting this decision made |
+| **Title** | What needs to be decided, written as a clear, actionable sentence |
+| **Description** | Background context, options, and rationale in markdown |
+| **Sponsor** | The circle member responsible for preparing and driving this decision to resolution |
+| **Owner** | The person broadly accountable for the decision area (optional) |
 | **Forum** | The circle where this decision is routed for discussion |
-| **Status** | Where the decision is in its lifecycle (Draft, Proposed, Taken, Escalated, Delegated) |
+| **Status** | Where the decision is in its lifecycle (Draft, Proposed, Scheduled, Rolled, Taken) |
 | **Age** | Days since creation — increases pressure visually |
-| **Requested by** | The person who raised the need for this decision (optional) |
+| **Requested by** | The person who raised the need for this decision |
+| **Requested date** | When the decision was requested |
+| **References** | Files or links attached for context |
 | **Initiative / Project** | Context linkage to an initiative or project (optional) |
 
 ## Status values
 
 <Steps>
   <Step title="Draft">
-    The decision has been created but isn't ready for forum discussion yet. The owner is still framing the problem, gathering context, or preparing options.
+    The decision has been created but isn't ready for forum discussion yet. The sponsor is still framing the problem, gathering context, or preparing options.
   </Step>
   <Step title="Proposed">
-    The decision is ready and has been routed to a forum. It's on the agenda for an upcoming session.
+    The decision is ready and has been routed to a forum. It's available for an upcoming session.
+  </Step>
+  <Step title="Scheduled">
+    The decision has been placed on a specific session's agenda. The sponsor has confirmed it's ready for discussion.
+  </Step>
+  <Step title="Rolled">
+    The decision was on the agenda but wasn't resolved in the session. It rolls to the next session — the age counter keeps ticking.
   </Step>
   <Step title="Taken">
     The forum has made the call. The decision is closed and commitments may be created from it.
-  </Step>
-  <Step title="Escalated">
-    The forum couldn't resolve it — the decision has been pushed up to a higher-level forum (e.g., from Product Forum to MT Weekly).
-  </Step>
-  <Step title="Delegated">
-    The forum pushed it down — the decision has been sent to a more specific forum or individual to resolve.
   </Step>
 </Steps>
 
@@ -45,19 +49,19 @@ Decisions involve three distinct roles. Keeping them separate is critical to how
 
 ### Requestor
 
-The person who raised the need. They create pull ("we need a decision on X because Y is blocked"), but they don't own the decision. Their job ends when the decision is properly framed and queued.
+The person who raised the need. They create pull ("we need a decision on X because Y is blocked"), but they don't own the decision. Every decision has a requestor — the system always tracks who surfaced the issue.
 
-### Decision owner
+### Sponsor
 
-The person accountable for getting the decision **made and closed**. They ensure it's prepared, routed to the right forum, and taken. They are the person who should feel uncomfortable if it stalls.
+The circle member responsible for getting the decision **prepared and resolved**. They ensure it's framed, has the right context, and is driven to a resolution in a session. They are the person who should feel uncomfortable if it stalls.
 
 <Note>
-  The decision owner owns the act of deciding, not the lifetime of the decision. Once taken, their job is done.
+  The sponsor owns the act of deciding, not the lifetime of the decision. Once taken, their job is done.
 </Note>
 
 ### Outcome accountable
 
-Handled via [commitments](/concepts/commitments), not decision ownership. Once a decision is taken, commitments are created and commitment owners execute and monitor.
+Handled via [commitments](/concepts/commitments), not decision sponsorship. Once a decision is taken, commitments are created and commitment owners execute and monitor.
 
 ## Age and pressure
 

@@ -9,19 +9,26 @@ This page maps the relationships between all entities in Vector. Understanding t
 
 | Relationship | Cardinality | Notes |
 |---|---|---|
+| Workspace → Circle | 1 to many | Every circle belongs to a workspace |
+| Workspace → Initiative | 1 to many | Every initiative belongs to a workspace |
+| Workspace → Project | 1 to many | Every project belongs to a workspace |
+| Workspace → Decision | 1 to many | Every decision belongs to a workspace |
+| Workspace → Commitment | 1 to many | Every commitment belongs to a workspace |
 | Initiative → Project | 1 to many | A project belongs to exactly one initiative |
 | Person ↔ Team | many to many | People can be on multiple teams |
 | Project ↔ Team | many to many | Teams can be involved in multiple projects (signal, not ownership) |
 | Initiative ↔ Person (subscribers) | many to many | For restricted visibility |
 | Project ↔ Person (subscribers) | many to many | For restricted visibility |
+| Circle → CircleMember | 1 to many | Each member has a role: Member or Organizer |
 
 ## Decision system
 
 | Relationship | Cardinality | Notes |
 |---|---|---|
 | Circle → Decision | 1 to many | A decision lives in exactly one circle at a time |
-| Person → Decision (owner) | 1 to many | A decision must have exactly one owner |
-| Person → Decision (requestor) | 0 to many | A decision has zero or one requestor |
+| Person → Decision (sponsor) | 1 to many | A decision must have exactly one sponsor |
+| Person → Decision (owner) | 0 to many | A decision has zero or one owner |
+| Person → Decision (requestor) | 1 to many | A decision must have exactly one requestor |
 | Initiative/Project → Decision | 0 to many | Optional context linkage |
 | Decision → Decision (revisit) | 0 to 1 | Self-referential revisit chain |
 
@@ -54,7 +61,7 @@ This page maps the relationships between all entities in Vector. Understanding t
 
 ### Why decisions live in exactly one circle
 
-A decision needs a clear venue. If it could exist in multiple circles simultaneously, ownership and accountability become ambiguous. Escalation and delegation are explicit actions that move the decision to a different circle.
+A decision needs a clear venue. If it could exist in multiple circles simultaneously, sponsorship and accountability become ambiguous.
 
 ### Why commitments can be standalone
 

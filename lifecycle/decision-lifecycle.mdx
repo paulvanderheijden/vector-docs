@@ -14,36 +14,34 @@ Every decision in Vector follows a clear lifecycle. The system is designed so de
     The **requestor** frames the need: "We need to decide X because Y."
   </Step>
   <Step title="A decision is created (Draft)">
-    The decision is created in Vector with a clear statement. A **decision owner** is assigned — the person accountable for getting it made. The default owner is the person accountable for the initiative the decision affects.
+    The decision is created in Vector with a clear title. A **sponsor** is assigned — the circle member accountable for getting it prepared and resolved.
 
-    At this stage the decision is a **Draft**. The owner gathers context, frames options, and prepares it for forum discussion.
+    At this stage the decision is a **Draft**. The sponsor gathers context, frames options, and prepares it for forum discussion.
 
     **The age counter starts ticking.**
   </Step>
   <Step title="Routed to a forum (Proposed)">
-    The owner routes the decision to the appropriate [circle](/concepts/circles). It moves to **Proposed** status and appears on the circle's agenda for an upcoming session.
+    The sponsor routes the decision to the appropriate [circle](/concepts/circles). It moves to **Proposed** status and is available for an upcoming session.
 
-    The owner chooses the forum based on who needs to be in the room. A product decision goes to Product Forum. A cross-functional resource allocation goes to MT Weekly.
+    The sponsor chooses the forum based on who needs to be in the room. A product decision goes to Product Forum. A cross-functional resource allocation goes to MT Weekly.
+  </Step>
+  <Step title="Placed on the agenda (Scheduled)">
+    The decision is placed on a specific session's agenda. It moves to **Scheduled** status. The sponsor has confirmed it's ready for discussion.
   </Step>
   <Step title="Discussed in session">
     The decision is discussed in a [session](/concepts/sessions). The forum reviews the context, debates options, and works toward resolution.
 
-    Three outcomes are possible:
+    Two outcomes are possible:
   </Step>
   <Step title="Outcome A: Taken">
     The forum makes the call. The decision moves to **Taken** status.
 
-    The decision owner's job is now done. [Commitments](/concepts/commitments) are created to execute on the decision — each with its own owner and due date. The decision is closed.
+    The sponsor's job is now done. [Commitments](/concepts/commitments) are created to execute on the decision — each with its own owner and due date. The decision is closed.
   </Step>
-  <Step title="Outcome B: Escalated">
-    The forum can't resolve it — it requires a higher-level group. The decision moves to **Escalated** status and is re-routed to a different circle (e.g., from Product Forum to MT Weekly).
+  <Step title="Outcome B: Rolled">
+    The forum didn't resolve it in this session — it needs more time, more context, or more people. The decision moves to **Rolled** status and carries over to the next session.
 
-    The owner remains the same unless explicitly reassigned. The age keeps ticking.
-  </Step>
-  <Step title="Outcome C: Delegated">
-    The forum determines it should be resolved by a more specific group or individual. The decision moves to **Delegated** status and is re-routed down.
-
-    The owner may change to someone closer to the problem.
+    The age keeps ticking. Rolled decisions create visible pressure — the forum must address them.
   </Step>
 </Steps>
 
@@ -52,7 +50,7 @@ Every decision in Vector follows a clear lifecycle. The system is designed so de
 Once taken, the decision is closed. The system transitions from decision mode to execution mode:
 
 1. **Commitments are created** — concrete outcomes with owners and due dates
-2. **The decision owner's job ends** — they are no longer responsible
+2. **The sponsor's job ends** — they are no longer responsible
 3. **Commitment owners take over** — they execute, report, and are reviewed in sessions
 4. **If reality changes** — a new decision is raised, potentially as a "revisit" linked to the original
 
@@ -63,21 +61,19 @@ Once taken, the decision is closed. The system transitions from decision mode to
 ## Status flow diagram
 
 ```
-Draft → Proposed → Taken
-                 ↘ Escalated → (re-enters at Proposed in a different circle)
-                 ↘ Delegated → (re-enters at Proposed in a different circle)
+Draft → Proposed → Scheduled → Taken
+                             ↘ Rolled → (re-enters at Scheduled for the next session)
 ```
 
-## Ownership defaults
+## Sponsor defaults
 
-| Scenario | Default owner |
+| Scenario | Default sponsor |
 |---|---|
-| Decision affects a specific initiative | The person accountable for that initiative |
-| Decision is escalated to MT | The CEO |
-| Decision cuts across priorities or resources | The CEO |
-| Decision is delegated down | Reassigned to the relevant person |
+| Decision affects a specific initiative | A circle member close to that initiative |
+| Decision raised by someone outside the circle | The circle organizer assigns a sponsor |
+| Cross-cutting decision in MT | The CEO or relevant executive |
 
-The requestor is **never** the default owner. The requestor creates pull; the owner ensures closure.
+The requestor is **never** the default sponsor. The requestor creates pull; the sponsor ensures resolution.
 
 ## Age as pressure
 
