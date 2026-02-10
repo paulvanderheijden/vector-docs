@@ -92,19 +92,11 @@
             ]
           },
           {
-            "group": "API Reference",
+            "group": "Database",
             "pages": [
-              "api/index",
-              "api/auth",
-              "api/workspaces",
-              "api/persons",
-              "api/circles",
-              "api/sessions",
-              "api/initiatives",
-              "api/projects",
-              "api/decisions",
-              "api/commitments",
-              "api/project-updates"
+              "backend/database-tables",
+              "backend/database-rls",
+              "backend/database-functions"
             ]
           }
         ]

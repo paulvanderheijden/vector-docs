@@ -1,308 +1,133 @@
 ---
-title: "Authentication & Multi-Tenancy"
-description: "How Vector implements user authentication and workspace isolation — based on patterns proven in cobber-alpha."
+title: "Auth & Multi-Tenancy"
+description: "How Vector implements authentication and workspace isolation with Supabase."
 ---
 
-This guide documents the authentication and multi-tenancy architecture for Vector. The patterns here are adapted from the cobber-alpha project, where they were battle-tested and refined after significant iteration.
+Vector uses Supabase Auth for authentication and Row-Level Security (RLS) for workspace isolation. Auth is at the user level; workspace access is determined by membership.
 
-## Architecture overview
+## Authentication
 
-| Concern | Approach |
-|---|---|
-| **Authentication** | JWT (access + refresh tokens) via `djangorestframework-simplejwt` |
-| **Auth scope** | User-level — tokens are not workspace-scoped |
-| **Multi-tenancy** | Application-level, URL-based tenant resolution |
-| **Tenant isolation** | Mixin-based query filtering + permission checks |
-| **Database** | PostgreSQL with Django ORM — no RLS, no schema-per-tenant |
-| **Frontend** | React context for auth state, Axios interceptors for token management |
+### How it works
 
-## Key principle
+Supabase Auth handles the entire auth lifecycle — sign up, sign in, token management, and session refresh. No custom auth code needed.
 
-**Auth is above the workspace.** A user authenticates once, then selects or navigates between workspaces. The workspace is determined by the URL path, not by the token. This is critical — it means a single session can access multiple workspaces without re-authenticating.
+```typescript
+// Sign in
+const { data, error } = await supabase.auth.signInWithPassword({
+  email: 'matt@mews.com',
+  password: '...'
+});
 
----
-
-## Data model
-
-### Core tables
-
-```python
-class User(AbstractUser):
-    """Extends Django's built-in user. Not workspace-scoped."""
-    tenants = ManyToManyField(Tenant, through="TenantUser")
-    last_active_tenant = ForeignKey(Tenant, SET_NULL, null=True)
-
-class Tenant(models.Model):
-    """A workspace / organization."""
-    name = TextField(max_length=255)
-    slug = SlugField(unique=True)
-    created_at = DateTimeField(auto_now_add=True)
-
-class TenantUser(models.Model):
-    """Through model — tracks membership and role."""
-    user = ForeignKey(User, CASCADE)
-    tenant = ForeignKey(Tenant, CASCADE)
-    role = CharField(choices=[("admin", "Admin"), ("member", "Member")])
-
-    class Meta:
-        unique_together = ("user", "tenant")
+// Session is automatically managed — tokens refresh transparently
+// Every subsequent supabase call includes the JWT automatically
 ```
 
-### Mapping to Vector
+### Auth flow
 
-| Cobber concept | Vector equivalent |
-|---|---|
-| `Tenant` | `Workspace` (with `name`, `slug`, `logo`) |
-| `TenantUser` | `WorkspaceMember` (with `personId`, `role`) |
-| `User` | `Person` (not workspace-scoped, can belong to many) |
-
-### Workspace-scoped entities
-
-Every domain entity gets a `workspaceId` foreign key:
-
-```python
-class Decision(models.Model):
-    workspace = ForeignKey(Workspace, CASCADE)  # Required
-    title = TextField()
-    # ...
-```
-
-This applies to: Circle, Initiative, Project, Decision, Commitment, Session, Project Update.
-
-It does **not** apply to: Person (multi-workspace access).
-
----
-
-## Authentication flow
-
-### Login
-
-```
-POST /auth/v1/token/
-
-Request:  { username, password }
-Response: { access, refresh, user, workspaces }
-```
-
-The login response includes the list of workspaces the user belongs to. This allows the frontend to show a workspace selector immediately — no second API call needed.
+1. User signs in via Supabase Auth (email/password or OAuth)
+2. Supabase returns a JWT containing the user's `auth.uid()`
+3. The Supabase JS client stores the session and auto-refreshes tokens
+4. Every database query includes the JWT — RLS policies use `auth.uid()` to determine access
 
 ### Token management
 
 | Setting | Value |
 |---|---|
-| Access token lifetime | 30 minutes |
-| Refresh token lifetime | 7 days |
-| Storage | `localStorage` (`accessToken`, `refreshToken`) |
-| Header | `Authorization: Bearer <access-token>` |
-| Rotation | No rotation — blacklisting on logout only |
+| Access token | Auto-managed by Supabase JS client |
+| Refresh | Automatic — no manual refresh logic needed |
+| Storage | Handled by `@supabase/supabase-js` (localStorage by default) |
+| Session detection | `supabase.auth.onAuthStateChange()` listener |
 
-### Token refresh
+<Note>
+  Unlike the cobber-alpha approach (manual JWT with `_retry` flags and interceptors), Supabase handles token refresh transparently. The entire token lifecycle is managed by the client library.
+</Note>
 
-When an API call returns `401`, the frontend interceptor automatically attempts a refresh:
+### User creation
 
-```typescript
-// Axios response interceptor
-if (error.response?.status === 401 && !originalRequest._retry) {
-    originalRequest._retry = true;  // Prevent infinite retry loops
-    try {
-        const response = await apiClient.post("auth/v1/token/refresh/", {
-            refresh: localStorage.getItem("refreshToken"),
-        });
-        localStorage.setItem("accessToken", response.data.access);
-        return apiClient(originalRequest);  // Retry with new token
-    } catch (refreshError) {
-        localStorage.removeItem("accessToken");
-        localStorage.removeItem("refreshToken");
-        window.location.href = "/login";
-    }
-}
+When a user signs up via Supabase Auth, a trigger automatically creates a row in the `persons` table:
+
+```sql
+CREATE OR REPLACE FUNCTION handle_new_user()
+RETURNS trigger AS $$
+BEGIN
+  INSERT INTO persons (id, email, name, initials)
+  VALUES (
+    NEW.id,
+    NEW.email,
+    COALESCE(NEW.raw_user_meta_data->>'name', ''),
+    COALESCE(NEW.raw_user_meta_data->>'initials', '')
+  );
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+CREATE TRIGGER on_auth_user_created
+  AFTER INSERT ON auth.users
+  FOR EACH ROW EXECUTE FUNCTION handle_new_user();
 ```
 
-<Warning>
-  The `_retry` flag is essential. Without it, a truly expired session causes an infinite refresh loop — the refresh call itself returns 401, which triggers another refresh, and so on.
-</Warning>
-
-### Logout
-
-```
-POST /auth/v1/logout/
-
-Request:  { refresh: "refresh-token-string" }
-Response: 205 Reset Content
-```
-
-The refresh token is blacklisted server-side. The frontend clears both tokens from `localStorage`.
-
----
+The `persons.id` matches `auth.users.id` — this is how RLS policies map authenticated users to workspace membership.
 
 ## Multi-tenancy
 
-### URL-based tenant resolution
+### Workspace isolation via RLS
 
-All workspace-scoped endpoints include the workspace slug in the URL path:
+Every workspace-scoped table has a `workspace_id` column. RLS policies ensure a user can only access rows in workspaces they belong to:
 
-```
-/api/v1/workspaces/{workspace_slug}/decisions/
-/api/v1/workspaces/{workspace_slug}/circles/
-/api/v1/workspaces/{workspace_slug}/commitments/
-```
-
-This pattern is self-documenting and prevents accidental cross-tenant requests — the workspace context is always explicit.
-
-### The tenant-scoped mixin
-
-The core of tenant isolation is a viewset mixin that all workspace-scoped views inherit:
-
-```python
-class TenantScopedViewSetMixin:
-    def get_tenant(self):
-        """Get workspace from URL and verify user access."""
-        tenant_slug = self.kwargs.get("workspace_slug")
-        return get_object_or_404(
-            Workspace.objects.filter(workspacemember__user=self.request.user),
-            slug=tenant_slug
-        )
-
-    def get_queryset(self):
-        """Filter ALL queries by current workspace."""
-        workspace = self.get_tenant()
-        return self.queryset.filter(workspace=workspace)
-
-    def perform_create(self, serializer):
-        """Auto-assign workspace on creation."""
-        workspace = self.get_tenant()
-        serializer.save(workspace=workspace)
+```sql
+-- Core policy pattern: check workspace membership
+CREATE POLICY "workspace_isolation" ON decisions
+  FOR ALL
+  USING (
+    workspace_id IN (
+      SELECT workspace_id FROM workspace_members
+      WHERE person_id = auth.uid()
+    )
+  );
 ```
 
-This enforces three things:
-1. **Access check** — the user must belong to the workspace (via `WorkspaceMember`)
-2. **Query scoping** — all reads are filtered to the current workspace
-3. **Auto-assignment** — all writes automatically get the correct workspace
-
-### Permission layer
-
-A separate permission class double-checks tenant access:
-
-```python
-class HasWorkspaceAccess(permissions.BasePermission):
-    def has_permission(self, request, view):
-        workspace_slug = view.kwargs.get("workspace_slug")
-        return Workspace.objects.filter(
-            slug=workspace_slug,
-            workspacemember__user=request.user
-        ).exists()
-```
-
-<Note>
-  The mixin and the permission class both verify access. This is intentional redundancy — the permission class can reject early (before the view runs), while the mixin provides the actual scoped queryset.
-</Note>
-
-### Why not RLS?
-
-Application-level isolation (not Postgres Row-Level Security) was chosen because:
-
-- **Simpler to reason about** — all scoping logic is in Python, visible in the codebase
-- **Easier to debug** — when a query returns wrong results, you can inspect the mixin
-- **Framework-native** — works with Django ORM, serializers, and admin without workarounds
-- **Sufficient for V1** — RLS adds complexity that's justified at scale, not at launch
-
----
-
-## Frontend architecture
-
-### Auth state management
-
-A React context manages the full auth lifecycle:
-
-```typescript
-interface AuthContext {
-    authStatus: "authenticated" | "unauthenticated" | "loading";
-    user: User | null;
-    workspaces: Workspace[];
-    login: (credentials) => Promise<boolean>;
-    logout: () => Promise<void>;
-}
-```
-
-The context wraps the entire app. Protected routes check `authStatus` and redirect to `/login` when unauthenticated.
+This is enforced at the **database level** — even if the frontend code has a bug, Postgres itself rejects cross-tenant queries. This is stronger than the app-level filtering used in cobber-alpha.
 
 ### Workspace selection flow
 
-1. User logs in → receives token + workspace list
-2. If multiple workspaces → show workspace selector at `/`
-3. User picks a workspace → navigates to `/{workspaceSlug}/...`
-4. All API calls use the workspace slug from the URL
-5. `last_active_workspace` is stored server-side for next login
-
-### API client setup
+1. User signs in
+2. Frontend queries `workspace_members` to get the user's workspaces
+3. User selects a workspace (or is redirected to their `last_active_workspace`)
+4. Frontend stores the active `workspace_id` in state
+5. All subsequent queries include `.eq('workspace_id', workspaceId)`
+6. RLS double-checks that the user actually belongs to this workspace
 
 ```typescript
-// Request interceptor: attach JWT
-config.headers.Authorization = `Bearer ${localStorage.getItem("accessToken")}`;
+// Get user's workspaces
+const { data: memberships } = await supabase
+  .from('workspace_members')
+  .select('workspace:workspaces(*), role')
+  .eq('person_id', user.id);
 
-// All workspace-scoped calls include the slug in the path
-const getDecisions = (workspaceSlug: string) =>
-    apiClient.get(`/api/v1/workspaces/${workspaceSlug}/decisions/`);
+// All queries scoped to the selected workspace
+const { data: circles } = await supabase
+  .from('circles')
+  .select('*, members:circle_members(person:persons(*))')
+  .eq('workspace_id', activeWorkspaceId);
 ```
 
----
+### Why RLS over app-level filtering
 
-## Security checklist
+| Concern | App-level (cobber) | RLS (Vector) |
+|---|---|---|
+| **Where isolation is enforced** | Python mixin in every viewset | Postgres policy on every table |
+| **What happens if you forget** | Data leak — wrong tenant sees data | Impossible — Postgres blocks it |
+| **Debugging** | Inspect Python code | `SELECT * FROM pg_policies` |
+| **Performance** | Extra WHERE clause per query | Same, but enforced by the planner |
 
-| Check | How it's enforced |
-|---|---|
-| User must be authenticated | `DEFAULT_PERMISSION_CLASSES = [IsAuthenticated]` — all endpoints require auth |
-| User must belong to workspace | `HasWorkspaceAccess` permission + `get_tenant()` in mixin |
-| Queries scoped to workspace | `get_queryset()` filters by workspace |
-| New objects assigned to workspace | `perform_create()` auto-assigns workspace |
-| Cross-tenant URL manipulation | Returns 404 (user not in WorkspaceMember) |
-| Token expiry | 30-min access, 7-day refresh, auto-refresh on 401 |
-| Logout invalidation | Refresh token blacklisted server-side |
-| CORS | Explicit allowed origins per environment |
+### Lessons from cobber-alpha
 
----
+These patterns were painful to get right in cobber-alpha. Supabase eliminates most of them:
 
-## Lessons learned from cobber-alpha
+1. **Mixin-based scoping** → replaced by RLS. No mixin to forget to apply.
+2. **Manual token refresh with `_retry` flag** → replaced by Supabase's auto-refresh.
+3. **Graceful login fallbacks** → Supabase Auth handles errors internally.
+4. **`last_active_workspace` storage** → still needed, stored in `persons` table.
+5. **Double-check access (permission + queryset)** → RLS is the single source of truth.
 
-These patterns were established after iterating through several issues:
-
-1. **Always use the mixin, never filter manually.** Every time a viewset filtered by tenant manually instead of using the mixin, bugs crept in. The mixin is the single source of truth for tenant scoping.
-
-2. **Graceful fallbacks on login.** If fetching the workspace list fails during login, the auth should still succeed — return an empty workspace list and let the user retry. Don't fail the entire login because of a secondary query.
-
-3. **The `_retry` flag on token refresh is non-negotiable.** Without it, expired sessions cause infinite 401 → refresh → 401 loops that freeze the browser.
-
-4. **Store `last_active_workspace` server-side.** If stored only in `localStorage`, users on new devices get dropped at the workspace selector with no context. Server-side storage lets you redirect them to the right place.
-
-5. **Keep tenant slug in the URL, not in a header or cookie.** URL-based routing is self-documenting, works with browser history, and makes cross-tenant bugs obvious in logs.
-
-6. **Double-check access at both permission and queryset level.** The permission class is a gate (stops unauthorized requests early), the mixin is a filter (ensures correct data). Having both prevents edge cases where one layer is accidentally bypassed.
-
----
-
-## Implementation plan for Vector
-
-### Phase 1 — Auth foundation
-
-- [ ] Set up Django project with `djangorestframework-simplejwt`
-- [ ] Create `Person` model (extends `AbstractUser`)
-- [ ] Create `Workspace` model with `name`, `slug`, `logo`
-- [ ] Create `WorkspaceMember` through model with `role`
-- [ ] Implement login endpoint returning tokens + workspace list
-- [ ] Implement token refresh and logout (with blacklisting)
-
-### Phase 2 — Tenant isolation
-
-- [ ] Create `WorkspaceScopedViewSetMixin` (get_workspace, get_queryset, perform_create)
-- [ ] Create `HasWorkspaceAccess` permission class
-- [ ] Add `workspaceId` FK to all domain models (Circle, Initiative, Project, Decision, Commitment)
-- [ ] Set up URL routing: `/api/v1/workspaces/{slug}/...`
-- [ ] Apply mixin to all viewsets
-
-### Phase 3 — Frontend auth
-
-- [ ] Create `AuthContext` with login/logout/refresh
-- [ ] Set up Axios interceptors (JWT header, auto-refresh, `_retry` flag)
-- [ ] Build login page and workspace selector
-- [ ] Route structure: `/{workspaceSlug}/...`
-- [ ] All API service functions take `workspaceSlug` from URL params
+The one pattern that carries over: **workspace slug in the URL**. The frontend still uses `/{workspaceSlug}/...` routes for navigation — this is a UX pattern, not a security mechanism. Security is enforced by RLS using `workspace_id`, not the slug.

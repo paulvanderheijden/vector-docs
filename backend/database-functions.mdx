@@ -1,0 +1,188 @@
+---
+title: "Functions & Triggers"
+description: "Postgres functions, triggers, and Edge Functions for custom logic."
+---
+
+Most of Vector's behavior is handled by the Supabase auto-generated API and RLS policies. The functions below cover the remaining custom logic.
+
+## Postgres triggers
+
+### Auto-generate session numbers
+
+Each circle has its own independent session numbering starting at 1.
+
+```sql
+CREATE OR REPLACE FUNCTION generate_session_number()
+RETURNS trigger AS $$
+BEGIN
+  NEW.number := COALESCE(
+    (SELECT MAX(number) FROM sessions WHERE circle_id = NEW.circle_id),
+    0
+  ) + 1;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER set_session_number
+  BEFORE INSERT ON sessions
+  FOR EACH ROW EXECUTE FUNCTION generate_session_number();
+```
+
+### Create person on sign-up
+
+When a user signs up via Supabase Auth, a corresponding `persons` row is created automatically.
+
+```sql
+CREATE OR REPLACE FUNCTION handle_new_user()
+RETURNS trigger AS $$
+BEGIN
+  INSERT INTO persons (id, email, name, initials)
+  VALUES (
+    NEW.id,
+    NEW.email,
+    COALESCE(NEW.raw_user_meta_data->>'name', ''),
+    COALESCE(NEW.raw_user_meta_data->>'initials', '')
+  );
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+CREATE TRIGGER on_auth_user_created
+  AFTER INSERT ON auth.users
+  FOR EACH ROW EXECUTE FUNCTION handle_new_user();
+```
+
+### Update `updated_at` timestamps
+
+Shared trigger applied to all tables with an `updated_at` column.
+
+```sql
+CREATE OR REPLACE FUNCTION update_updated_at()
+RETURNS trigger AS $$
+BEGIN
+  NEW.updated_at = now();
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+```
+
+Applied to: `workspaces`, `persons`, `circles`, `sessions`, `initiatives`, `projects`, `decisions`, `commitments`, `project_updates`.
+
+## Postgres functions
+
+### Validate sponsor is circle member
+
+Ensures the decision sponsor belongs to the decision's circle.
+
+```sql
+CREATE OR REPLACE FUNCTION validate_decision_sponsor()
+RETURNS trigger AS $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM circle_members
+    WHERE circle_id = NEW.circle_id AND person_id = NEW.sponsor_person_id
+  ) THEN
+    RAISE EXCEPTION 'Sponsor must be a member of the decision circle';
+  END IF;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER check_decision_sponsor
+  BEFORE INSERT OR UPDATE ON decisions
+  FOR EACH ROW EXECUTE FUNCTION validate_decision_sponsor();
+```
+
+### Validate commitment owner is circle member
+
+Ensures the commitment owner belongs to the review circle.
+
+```sql
+CREATE OR REPLACE FUNCTION validate_commitment_owner()
+RETURNS trigger AS $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM circle_members
+    WHERE circle_id = NEW.review_circle_id AND person_id = NEW.owner_person_id
+  ) THEN
+    RAISE EXCEPTION 'Commitment owner must be a member of the review circle';
+  END IF;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER check_commitment_owner
+  BEFORE INSERT OR UPDATE ON commitments
+  FOR EACH ROW EXECUTE FUNCTION validate_commitment_owner();
+```
+
+## Edge Functions
+
+Supabase Edge Functions handle logic that goes beyond CRUD and database triggers. They run as serverless Deno/TypeScript functions.
+
+### When to use Edge Functions
+
+| Use case | Approach |
+|---|---|
+| CRUD operations | Supabase JS client (auto-generated API) |
+| Access control | RLS policies |
+| Data validation | Postgres triggers |
+| Computed values | Frontend (e.g., decision age from `requested_date`) |
+| External integrations | Edge Functions |
+| Complex multi-step operations | Edge Functions |
+
+### Planned Edge Functions
+
+**Auto-roll commitments**
+
+A scheduled Edge Function that runs daily and rolls commitments whose due date has passed:
+
+```typescript
+// supabase/functions/auto-roll-commitments/index.ts
+import { createClient } from '@supabase/supabase-js';
+
+Deno.serve(async () => {
+  const supabase = createClient(
+    Deno.env.get('SUPABASE_URL')!,
+    Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!  // Bypasses RLS
+  );
+
+  const { error } = await supabase
+    .from('commitments')
+    .update({ status: 'Rolled' })
+    .in('status', ['Active', 'At risk'])
+    .lt('due', new Date().toISOString().split('T')[0]);
+
+  return new Response(JSON.stringify({ error }), {
+    headers: { 'Content-Type': 'application/json' },
+  });
+});
+```
+
+Triggered via a Supabase cron job (pg_cron) running daily.
+
+**Notification dispatch**
+
+An Edge Function that sends notifications (email, Slack) when specific events occur — e.g., a commitment is assigned, a decision is scheduled, or a session is marked complete.
+
+```typescript
+// supabase/functions/notify/index.ts
+// Triggered via a Postgres webhook on INSERT/UPDATE
+```
+
+## Migration strategy
+
+All database changes are managed via Supabase migrations:
+
+```bash
+# Create a new migration
+supabase migration new add_teams_table
+
+# Apply migrations locally
+supabase db reset
+
+# Push to production
+supabase db push
+```
+
+Migration files live in `supabase/migrations/` and are version-controlled in Git.

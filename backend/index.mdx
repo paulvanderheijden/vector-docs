@@ -1,23 +1,80 @@
 ---
 title: "Backend Overview"
-description: "Technical documentation for the Vector backend."
+description: "Technical architecture for the Vector backend."
 ---
 
-This section covers the domain model, data relationships, and API specification for the Vector backend.
+Vector uses **Supabase** as its backend — a hosted Postgres database with built-in auth, auto-generated REST API, Row-Level Security, and Edge Functions. There is no separate API server.
+
+## Architecture
+
+```
+React app (Vercel) → Supabase JS client → Postgres (Supabase)
+                                        → Supabase Auth
+                                        → Edge Functions (custom logic)
+                                        → Storage (file references)
+```
+
+The frontend calls Supabase directly. All CRUD operations go through the auto-generated PostgREST API. Authorization is enforced at the database level via Row-Level Security (RLS) policies — not in application code.
+
+## Tech stack
+
+| Layer | Technology |
+|---|---|
+| **Database** | PostgreSQL (hosted by Supabase) |
+| **Auth** | Supabase Auth (JWT, email/password, OAuth) |
+| **API** | Auto-generated REST via PostgREST |
+| **Authorization** | Row-Level Security (RLS) on Postgres |
+| **Custom logic** | Supabase Edge Functions (Deno/TypeScript) |
+| **File storage** | Supabase Storage (for decision references) |
+| **Hosting** | Supabase (database + auth + functions), Vercel (frontend) |
+
+## Why Supabase
+
+| Concern | Supabase | Traditional backend (Django) |
+|---|---|---|
+| **CRUD API** | Free — auto-generated from tables | Every endpoint written manually |
+| **Auth** | Built-in, zero code | Custom implementation |
+| **Tenant isolation** | Database-level (RLS) — Postgres enforces it | App-level filtering — one bug and data leaks |
+| **Realtime** | Built-in subscriptions | Separate WebSocket setup |
+| **Infrastructure** | Managed — nothing to deploy | Separate server to maintain |
+
+## Frontend integration
+
+The React app uses `@supabase/supabase-js` to interact with the database:
+
+```typescript
+import { createClient } from '@supabase/supabase-js';
+
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL,
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+);
+
+// All queries are automatically filtered by RLS policies
+const { data: decisions } = await supabase
+  .from('decisions')
+  .select('*, sponsor:persons!sponsor_person_id(*)')
+  .eq('workspace_id', workspaceId);
+```
+
+No API layer to build, no serializers, no viewsets. The database schema defines the API surface.
 
 ## Sections
 
 <CardGroup cols={2}>
-  <Card title="Schema" icon="database" href="/domain/schema">
-    The complete entity model — all fields, types, and constraints.
+  <Card title="Database Tables" icon="database" href="/backend/database-tables">
+    Complete table definitions — columns, types, constraints, and indexes.
   </Card>
-  <Card title="Relationships" icon="diagram-project" href="/domain/relationships">
-    How entities connect — cardinality and design rationale.
+  <Card title="RLS Policies" icon="shield" href="/backend/database-rls">
+    Row-Level Security policies that enforce multi-tenancy and permissions.
   </Card>
-  <Card title="API Overview" icon="code" href="/api/index">
-    REST API conventions — auth, pagination, errors.
+  <Card title="Functions & Triggers" icon="bolt" href="/backend/database-functions">
+    Postgres functions, triggers, and Supabase Edge Functions.
   </Card>
-  <Card title="API Resources" icon="server" href="/api/workspaces">
-    Full CRUD reference for all entities.
+  <Card title="Auth & Multi-Tenancy" icon="lock" href="/backend/auth-and-tenancy">
+    Authentication setup and workspace isolation architecture.
+  </Card>
+  <Card title="Permissions" icon="user-shield" href="/backend/permissions">
+    How permissions are derived from data relationships and enforced via RLS.
   </Card>
 </CardGroup>

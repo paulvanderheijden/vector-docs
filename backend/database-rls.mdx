@@ -1,0 +1,271 @@
+---
+title: "Row-Level Security"
+description: "RLS policies that enforce multi-tenancy and permissions at the database level."
+---
+
+Every table in Vector has Row-Level Security (RLS) enabled. These policies are the **single source of truth** for authorization — the frontend doesn't need to implement access checks because Postgres enforces them on every query.
+
+## Enabling RLS
+
+```sql
+ALTER TABLE workspaces ENABLE ROW LEVEL SECURITY;
+ALTER TABLE workspace_members ENABLE ROW LEVEL SECURITY;
+ALTER TABLE persons ENABLE ROW LEVEL SECURITY;
+ALTER TABLE circles ENABLE ROW LEVEL SECURITY;
+ALTER TABLE circle_members ENABLE ROW LEVEL SECURITY;
+ALTER TABLE sessions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE initiatives ENABLE ROW LEVEL SECURITY;
+ALTER TABLE initiative_members ENABLE ROW LEVEL SECURITY;
+ALTER TABLE projects ENABLE ROW LEVEL SECURITY;
+ALTER TABLE project_members ENABLE ROW LEVEL SECURITY;
+ALTER TABLE decisions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE decision_references ENABLE ROW LEVEL SECURITY;
+ALTER TABLE commitments ENABLE ROW LEVEL SECURITY;
+ALTER TABLE project_updates ENABLE ROW LEVEL SECURITY;
+```
+
+## Helper function
+
+All policies use this function to check workspace membership:
+
+```sql
+CREATE OR REPLACE FUNCTION is_workspace_member(ws_id uuid)
+RETURNS boolean AS $$
+  SELECT EXISTS (
+    SELECT 1 FROM workspace_members
+    WHERE workspace_id = ws_id AND person_id = auth.uid()
+  );
+$$ LANGUAGE sql SECURITY DEFINER STABLE;
+
+CREATE OR REPLACE FUNCTION is_workspace_admin(ws_id uuid)
+RETURNS boolean AS $$
+  SELECT EXISTS (
+    SELECT 1 FROM workspace_members
+    WHERE workspace_id = ws_id AND person_id = auth.uid() AND role = 'Admin'
+  );
+$$ LANGUAGE sql SECURITY DEFINER STABLE;
+
+CREATE OR REPLACE FUNCTION is_circle_member(c_id uuid)
+RETURNS boolean AS $$
+  SELECT EXISTS (
+    SELECT 1 FROM circle_members
+    WHERE circle_id = c_id AND person_id = auth.uid()
+  );
+$$ LANGUAGE sql SECURITY DEFINER STABLE;
+
+CREATE OR REPLACE FUNCTION is_circle_organizer(c_id uuid)
+RETURNS boolean AS $$
+  SELECT EXISTS (
+    SELECT 1 FROM circle_members
+    WHERE circle_id = c_id AND person_id = auth.uid() AND role = 'Organizer'
+  );
+$$ LANGUAGE sql SECURITY DEFINER STABLE;
+```
+
+## Policies
+
+### Workspaces
+
+Users can only see workspaces they belong to.
+
+```sql
+CREATE POLICY "Users see own workspaces" ON workspaces
+  FOR SELECT USING (is_workspace_member(id));
+
+CREATE POLICY "Admins can update workspace" ON workspaces
+  FOR UPDATE USING (is_workspace_admin(id));
+```
+
+### Workspace members
+
+Users can see members of their own workspaces. Only admins can add/remove.
+
+```sql
+CREATE POLICY "Members see workspace members" ON workspace_members
+  FOR SELECT USING (is_workspace_member(workspace_id));
+
+CREATE POLICY "Admins manage members" ON workspace_members
+  FOR ALL USING (is_workspace_admin(workspace_id));
+```
+
+### Persons
+
+Users can see persons who share a workspace with them.
+
+```sql
+CREATE POLICY "Users see persons in shared workspaces" ON persons
+  FOR SELECT USING (
+    id IN (
+      SELECT wm2.person_id FROM workspace_members wm1
+      JOIN workspace_members wm2 ON wm1.workspace_id = wm2.workspace_id
+      WHERE wm1.person_id = auth.uid()
+    )
+  );
+
+CREATE POLICY "Users can update own profile" ON persons
+  FOR UPDATE USING (id = auth.uid());
+```
+
+### Circles
+
+Only workspace members can see circles. Circle content (decisions, commitments, sessions) is restricted to circle members.
+
+```sql
+CREATE POLICY "Workspace members see circles" ON circles
+  FOR SELECT USING (is_workspace_member(workspace_id));
+
+CREATE POLICY "Admins manage circles" ON circles
+  FOR INSERT WITH CHECK (is_workspace_admin(workspace_id));
+
+CREATE POLICY "Admins update circles" ON circles
+  FOR UPDATE USING (is_workspace_admin(workspace_id));
+```
+
+### Circle members
+
+```sql
+CREATE POLICY "Circle members see membership" ON circle_members
+  FOR SELECT USING (is_circle_member(circle_id));
+
+CREATE POLICY "Admins manage circle members" ON circle_members
+  FOR ALL USING (
+    EXISTS (
+      SELECT 1 FROM circles
+      WHERE circles.id = circle_id AND is_workspace_admin(circles.workspace_id)
+    )
+  );
+```
+
+### Sessions
+
+Only circle members can see and interact with sessions.
+
+```sql
+CREATE POLICY "Circle members see sessions" ON sessions
+  FOR SELECT USING (is_circle_member(circle_id));
+
+CREATE POLICY "Circle members create sessions" ON sessions
+  FOR INSERT WITH CHECK (is_circle_member(circle_id));
+
+CREATE POLICY "Circle members update sessions" ON sessions
+  FOR UPDATE USING (is_circle_member(circle_id));
+```
+
+### Decisions
+
+Circle members can see decisions routed to their circle. Any workspace member can create a draft.
+
+```sql
+CREATE POLICY "Circle members see decisions" ON decisions
+  FOR SELECT USING (is_circle_member(circle_id));
+
+CREATE POLICY "Workspace members create drafts" ON decisions
+  FOR INSERT WITH CHECK (
+    is_workspace_member(workspace_id) AND status = 'Draft'
+  );
+
+CREATE POLICY "Sponsors and organizers update decisions" ON decisions
+  FOR UPDATE USING (
+    sponsor_person_id = auth.uid()
+    OR is_circle_organizer(circle_id)
+  );
+```
+
+### Decision references
+
+Follow the parent decision's access.
+
+```sql
+CREATE POLICY "Access follows decision" ON decision_references
+  FOR SELECT USING (
+    decision_id IN (SELECT id FROM decisions)  -- RLS on decisions handles filtering
+  );
+
+CREATE POLICY "Sponsors manage references" ON decision_references
+  FOR ALL USING (
+    decision_id IN (
+      SELECT id FROM decisions WHERE sponsor_person_id = auth.uid()
+    )
+  );
+```
+
+### Commitments
+
+Circle members can see commitments reviewed in their circle.
+
+```sql
+CREATE POLICY "Circle members see commitments" ON commitments
+  FOR SELECT USING (is_circle_member(review_circle_id));
+
+CREATE POLICY "Circle members create commitments" ON commitments
+  FOR INSERT WITH CHECK (is_circle_member(review_circle_id));
+
+CREATE POLICY "Owners and organizers update commitments" ON commitments
+  FOR UPDATE USING (
+    owner_person_id = auth.uid()
+    OR is_circle_organizer(review_circle_id)
+  );
+```
+
+### Initiatives & Projects
+
+Public initiatives/projects are visible to all workspace members. Restricted ones require explicit membership.
+
+```sql
+CREATE POLICY "Workspace members see public initiatives" ON initiatives
+  FOR SELECT USING (
+    is_workspace_member(workspace_id)
+    AND (visibility = 'Public' OR id IN (
+      SELECT initiative_id FROM initiative_members WHERE person_id = auth.uid()
+    ))
+  );
+
+CREATE POLICY "Admins manage initiatives" ON initiatives
+  FOR INSERT WITH CHECK (is_workspace_admin(workspace_id));
+
+CREATE POLICY "Admins update initiatives" ON initiatives
+  FOR UPDATE USING (is_workspace_admin(workspace_id));
+```
+
+```sql
+CREATE POLICY "Workspace members see public projects" ON projects
+  FOR SELECT USING (
+    is_workspace_member(workspace_id)
+    AND (visibility = 'Public' OR id IN (
+      SELECT project_id FROM project_members WHERE person_id = auth.uid()
+    ))
+  );
+```
+
+### Project updates
+
+Follow the parent project's access.
+
+```sql
+CREATE POLICY "Project viewers see updates" ON project_updates
+  FOR SELECT USING (
+    project_id IN (SELECT id FROM projects)  -- RLS on projects handles filtering
+  );
+
+CREATE POLICY "Project members create updates" ON project_updates
+  FOR INSERT WITH CHECK (
+    project_id IN (
+      SELECT id FROM projects WHERE lead_person_id = auth.uid()
+    )
+    OR project_id IN (
+      SELECT project_id FROM project_members WHERE person_id = auth.uid()
+    )
+  );
+```
+
+## Testing policies
+
+You can test RLS policies in the Supabase SQL editor by impersonating a user:
+
+```sql
+-- Set the auth context to a specific user
+SET request.jwt.claims = '{"sub": "user-uuid-here"}';
+
+-- This query will only return rows the user can access
+SELECT * FROM decisions;
+```

@@ -1,0 +1,318 @@
+---
+title: "Database Tables"
+description: "Complete Postgres table definitions for Vector."
+---
+
+All tables live in the `public` schema of a Supabase Postgres database. The Supabase JS client auto-generates a REST API from these tables — no endpoints to write.
+
+## Naming conventions
+
+- Table names: `snake_case`, plural (`decisions`, `circle_members`)
+- Column names: `snake_case` (`sponsor_person_id`, `workspace_id`)
+- Foreign keys: `{entity}_id` (`circle_id`, `initiative_id`)
+- Enums: Postgres `text` with `CHECK` constraints
+- Timestamps: `timestamptz` with defaults
+
+## Tables
+
+### workspaces
+
+```sql
+CREATE TABLE workspaces (
+  id          uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  name        text NOT NULL,
+  slug        text NOT NULL UNIQUE,
+  logo        text,
+  created_at  timestamptz NOT NULL DEFAULT now(),
+  updated_at  timestamptz NOT NULL DEFAULT now()
+);
+```
+
+### persons
+
+```sql
+CREATE TABLE persons (
+  id                       uuid PRIMARY KEY REFERENCES auth.users(id),
+  name                     text NOT NULL,
+  email                    text NOT NULL UNIQUE,
+  initials                 text NOT NULL,
+  last_active_workspace_id uuid REFERENCES workspaces(id) ON DELETE SET NULL,
+  created_at               timestamptz NOT NULL DEFAULT now(),
+  updated_at               timestamptz NOT NULL DEFAULT now()
+);
+```
+
+The `id` column references `auth.users(id)` — this links Supabase Auth to the person record.
+
+### workspace_members
+
+```sql
+CREATE TABLE workspace_members (
+  workspace_id uuid NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
+  person_id    uuid NOT NULL REFERENCES persons(id) ON DELETE CASCADE,
+  role         text NOT NULL CHECK (role IN ('Admin', 'Member')),
+  created_at   timestamptz NOT NULL DEFAULT now(),
+  PRIMARY KEY (workspace_id, person_id)
+);
+```
+
+| Role | Description |
+|---|---|
+| `Admin` | Can manage workspace settings, invite/remove people, create/edit circles |
+| `Member` | Can view and create entities within the workspace |
+
+### circles
+
+```sql
+CREATE TABLE circles (
+  id           uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  workspace_id uuid NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
+  name         text NOT NULL,
+  cadence      text NOT NULL,
+  created_at   timestamptz NOT NULL DEFAULT now(),
+  updated_at   timestamptz NOT NULL DEFAULT now()
+);
+```
+
+### circle_members
+
+```sql
+CREATE TABLE circle_members (
+  circle_id  uuid NOT NULL REFERENCES circles(id) ON DELETE CASCADE,
+  person_id  uuid NOT NULL REFERENCES persons(id) ON DELETE CASCADE,
+  role       text NOT NULL CHECK (role IN ('Member', 'Organizer')),
+  created_at timestamptz NOT NULL DEFAULT now(),
+  PRIMARY KEY (circle_id, person_id)
+);
+```
+
+| Role | Description |
+|---|---|
+| `Member` | Can see circle content, be assigned as sponsor or commitment owner, attend sessions |
+| `Organizer` | All member capabilities, plus: manage session agendas, schedule decisions, mark sessions completed |
+
+### sessions
+
+```sql
+CREATE TABLE sessions (
+  id           uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  circle_id    uuid NOT NULL REFERENCES circles(id) ON DELETE CASCADE,
+  number       integer NOT NULL,
+  title        text NOT NULL,
+  date         date NOT NULL,
+  decision_ids uuid[] DEFAULT '{}',
+  commitment_ids uuid[] DEFAULT '{}',
+  notes        text,
+  completed    boolean NOT NULL DEFAULT false,
+  created_at   timestamptz NOT NULL DEFAULT now(),
+  updated_at   timestamptz NOT NULL DEFAULT now(),
+  UNIQUE (circle_id, number)
+);
+```
+
+The `number` column is auto-generated per circle via a trigger (see [Functions & Triggers](/backend/database-functions)). The `UNIQUE (circle_id, number)` constraint ensures no duplicates within a circle.
+
+### initiatives
+
+```sql
+CREATE TABLE initiatives (
+  id           uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  workspace_id uuid NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
+  name         text NOT NULL,
+  status       text NOT NULL CHECK (status IN ('Planned', 'Active', 'Completed')),
+  target_date  text NOT NULL,
+  visibility   text NOT NULL CHECK (visibility IN ('Public', 'Restricted')),
+  created_at   timestamptz NOT NULL DEFAULT now(),
+  updated_at   timestamptz NOT NULL DEFAULT now()
+);
+```
+
+| Status | Description |
+|---|---|
+| `Planned` | Defined but work has not started |
+| `Active` | In progress — projects are being executed |
+| `Completed` | Delivered or closed |
+
+### initiative_members
+
+```sql
+CREATE TABLE initiative_members (
+  initiative_id uuid NOT NULL REFERENCES initiatives(id) ON DELETE CASCADE,
+  person_id     uuid NOT NULL REFERENCES persons(id) ON DELETE CASCADE,
+  PRIMARY KEY (initiative_id, person_id)
+);
+```
+
+### projects
+
+```sql
+CREATE TABLE projects (
+  id             uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  workspace_id   uuid NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
+  initiative_id  uuid NOT NULL REFERENCES initiatives(id) ON DELETE CASCADE,
+  name           text NOT NULL,
+  visibility     text NOT NULL CHECK (visibility IN ('Public', 'Restricted')),
+  lead_person_id uuid NOT NULL REFERENCES persons(id),
+  created_at     timestamptz NOT NULL DEFAULT now(),
+  updated_at     timestamptz NOT NULL DEFAULT now()
+);
+```
+
+| Visibility | Description |
+|---|---|
+| `Public` | Visible to everyone in the workspace |
+| `Restricted` | Only visible to explicit subscribers plus the lead |
+
+### project_members
+
+```sql
+CREATE TABLE project_members (
+  project_id uuid NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+  person_id  uuid NOT NULL REFERENCES persons(id) ON DELETE CASCADE,
+  PRIMARY KEY (project_id, person_id)
+);
+```
+
+### decisions
+
+```sql
+CREATE TABLE decisions (
+  id                     uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  workspace_id           uuid NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
+  title                  text NOT NULL,
+  description            text,
+  status                 text NOT NULL CHECK (status IN ('Draft', 'Proposed', 'Scheduled', 'Rolled', 'Taken'))
+                           DEFAULT 'Draft',
+  owner_person_id        uuid REFERENCES persons(id),
+  sponsor_person_id      uuid NOT NULL REFERENCES persons(id),
+  circle_id              uuid NOT NULL REFERENCES circles(id),
+  requested_by_person_id uuid NOT NULL REFERENCES persons(id),
+  requested_date         date,
+  initiative_id          uuid REFERENCES initiatives(id) ON DELETE SET NULL,
+  project_id             uuid REFERENCES projects(id) ON DELETE SET NULL,
+  revisit_of_decision_id uuid REFERENCES decisions(id) ON DELETE SET NULL,
+  created_at             timestamptz NOT NULL DEFAULT now(),
+  updated_at             timestamptz NOT NULL DEFAULT now()
+);
+```
+
+| Status | Description |
+|---|---|
+| `Draft` | Created but not ready for discussion. Sponsor is gathering context. |
+| `Proposed` | Ready for the circle. Available to be placed on a session agenda. |
+| `Scheduled` | On a specific session's agenda. Ready for discussion. |
+| `Rolled` | Was on the agenda but not resolved. Carries over to next session. |
+| `Taken` | The circle made the call. Decision is closed. |
+
+The decision's age in days is computed in the frontend from `requested_date` (or `created_at` if no requested date).
+
+### decision_references
+
+```sql
+CREATE TABLE decision_references (
+  id          uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  decision_id uuid NOT NULL REFERENCES decisions(id) ON DELETE CASCADE,
+  type        text NOT NULL CHECK (type IN ('file', 'link')),
+  url         text NOT NULL,
+  title       text,
+  created_at  timestamptz NOT NULL DEFAULT now()
+);
+```
+
+### commitments
+
+```sql
+CREATE TABLE commitments (
+  id               uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  workspace_id     uuid NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
+  title            text NOT NULL,
+  description      text,
+  status           text NOT NULL CHECK (status IN ('Active', 'At risk', 'Rolled', 'Delivered'))
+                     DEFAULT 'Active',
+  owner_person_id  uuid NOT NULL REFERENCES persons(id),
+  review_circle_id uuid NOT NULL REFERENCES circles(id),
+  decision_id      uuid REFERENCES decisions(id) ON DELETE SET NULL,
+  due              date NOT NULL,
+  created_at       timestamptz NOT NULL DEFAULT now(),
+  updated_at       timestamptz NOT NULL DEFAULT now()
+);
+```
+
+| Status | Description |
+|---|---|
+| `Active` | On track, being worked on |
+| `At risk` | Flagged for potential slippage |
+| `Rolled` | Due date passed without delivery |
+| `Delivered` | Outcome completed, commitment closed |
+
+### project_updates
+
+```sql
+CREATE TABLE project_updates (
+  id               uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  project_id       uuid NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+  author_person_id uuid NOT NULL REFERENCES persons(id),
+  date             date NOT NULL,
+  health           text NOT NULL CHECK (health IN ('On track', 'At risk', 'Off track')),
+  content          text NOT NULL,
+  created_at       timestamptz NOT NULL DEFAULT now(),
+  updated_at       timestamptz NOT NULL DEFAULT now()
+);
+```
+
+| Health | Description |
+|---|---|
+| `On track` | Progressing as expected, no blockers |
+| `At risk` | Potential delays or blockers that may cause problems |
+| `Off track` | Behind schedule or significant issues needing intervention |
+
+## Indexes
+
+```sql
+-- Workspace-scoped lookups (most common query pattern)
+CREATE INDEX idx_circles_workspace ON circles(workspace_id);
+CREATE INDEX idx_initiatives_workspace ON initiatives(workspace_id);
+CREATE INDEX idx_projects_workspace ON projects(workspace_id);
+CREATE INDEX idx_decisions_workspace ON decisions(workspace_id);
+CREATE INDEX idx_commitments_workspace ON commitments(workspace_id);
+
+-- Circle content lookups
+CREATE INDEX idx_sessions_circle ON sessions(circle_id);
+CREATE INDEX idx_decisions_circle ON decisions(circle_id);
+CREATE INDEX idx_commitments_review_circle ON commitments(review_circle_id);
+
+-- Person lookups
+CREATE INDEX idx_decisions_sponsor ON decisions(sponsor_person_id);
+CREATE INDEX idx_decisions_requested_by ON decisions(requested_by_person_id);
+CREATE INDEX idx_commitments_owner ON commitments(owner_person_id);
+
+-- Status filtering
+CREATE INDEX idx_decisions_status ON decisions(status);
+CREATE INDEX idx_commitments_status ON commitments(status);
+CREATE INDEX idx_initiatives_status ON initiatives(status);
+
+-- Project hierarchy
+CREATE INDEX idx_projects_initiative ON projects(initiative_id);
+CREATE INDEX idx_project_updates_project ON project_updates(project_id);
+```
+
+## Updated_at trigger
+
+All tables with `updated_at` use a shared trigger:
+
+```sql
+CREATE OR REPLACE FUNCTION update_updated_at()
+RETURNS trigger AS $$
+BEGIN
+  NEW.updated_at = now();
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Applied to each table:
+CREATE TRIGGER set_updated_at BEFORE UPDATE ON workspaces
+  FOR EACH ROW EXECUTE FUNCTION update_updated_at();
+CREATE TRIGGER set_updated_at BEFORE UPDATE ON persons
+  FOR EACH ROW EXECUTE FUNCTION update_updated_at();
+-- ... (same for all tables with updated_at)
+```
