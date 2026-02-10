@@ -5,68 +5,119 @@ description: "Overview of all screens in the Vector frontend."
 
 ## Screen map
 
-| Screen | Route | Description |
-|---|---|---|
-| **My Dashboard** | `/` | Personal control view — decisions you own/sponsor, commitments due, items needing attention |
-| **Circle View** | `/circles/{id}` | Circle overview — upcoming/previous sessions, decisions routed here, commitments under review |
-| **Session Detail** | `/circles/{circleId}/sessions/{id}` | Meeting workspace — reorderable decision agenda, commitment review, meeting notes editor |
-| **Decision Detail** | `/decisions/{id}` | Full decision view — title, description, references, status, sponsor, circle, linked commitments |
-| **Initiative View** | `/initiatives/{id}` | Initiative overview — projects, linked decisions, health |
-| **Project View** | `/projects/{id}` | Project detail — updates, linked decisions and commitments, team |
+| Screen | Route | Component | Description |
+|---|---|---|---|
+| **Inbox** | `/` | `Inbox` | Proposed decisions from the user's circles, filterable by circle |
+| **My Items** | `/my-items` | `MyItems` | User's assigned decisions and commitments with tab switching |
+| **Strategy** | `/strategy` | `Strategy` | Editable markdown strategy document with auto-generated table of contents |
+| **Circles List** | `/circles` | `CirclesList` | All circles with membership status, purpose, cadence, and member avatars |
+| **Circle View** | `/circles/:slug/decisions` | `CircleView` | Circle's decisions, filterable by all/open |
+| **Circle View** | `/circles/:slug/commitments` | `CircleView` | Circle's commitments |
+| **Decision Detail** | `/circles/:slug/decisions/:decisionSlug` | `DecisionDetail` | Full decision view with overview, commitments, and activity tabs |
+| **Commitment Review** | `/circles/:slug/commitments/:commitmentSlug` | `CommitmentReview` | Commitment view with overview and activity tabs |
+| **Sessions List** | `/circles/:slug/sessions` | `SessionsList` | Paginated list of circle sessions (also `/upcoming` and `/previous` variants) |
+| **Session Detail** | `/circles/:slug/sessions/:sessionNumber` | `SessionDetail` | Meeting workspace with decision agenda, commitment review, and notes editor |
+| **Initiatives List** | `/initiatives` | `InitiativesList` | Filterable list of initiatives with status tabs (active/planned/completed) |
+| **Initiative Detail** | `/initiatives/:initiativeId` | `InitiativeDetail` | Initiative overview with icon picker, editable properties, and projects table |
+| **Projects List** | `/projects` | `ProjectsList` | Projects grouped by initiative, filterable by team and health |
+| **Project Detail** | `/projects/:projectId` | `ProjectDetail` | Project detail with health, visibility, teams, decisions, and commitments |
 
 ## Screen details
 
-### My Dashboard
+### Inbox
 
-The landing page for the authenticated user. Shows a personal view of:
+The landing page. Shows all decisions with status "Proposed" from circles the current user belongs to. Circle filter tabs at the top allow narrowing to a specific circle. Empty state when no proposed decisions exist.
 
-- **Decisions I sponsor** — grouped by status, sorted by age (oldest first)
-- **My commitments** — grouped by status, due dates highlighted
-- **Items needing attention** — rolled commitments, aging decisions, at-risk items
+### My Items
+
+Personal view of the user's assigned work. Two tabs:
+
+- **Decisions** — all decisions where the user is the owner
+- **Commitments** — all commitments where the user is the owner
+
+Tab counts shown in the tab labels.
+
+### Strategy
+
+Full-width editable strategy document using the TipTap markdown editor. A sticky table of contents sidebar (desktop only) is auto-generated from H2/H3/H4 headings in the editor via a MutationObserver, with scroll-spy highlighting.
+
+### Circles List
+
+Table of all circles. Columns: circle name, membership status (Joined badge or Join button), purpose badge, cadence, and stacked member avatars (max 6 shown with +N overflow). Clicking a row navigates to that circle's decisions.
 
 ### Circle View
 
-The primary workspace for a circle. Two main sections:
+The primary workspace for a circle. Section (decisions or commitments) is derived from the URL path. In decisions mode:
 
-- **Sessions** — upcoming sessions (with agenda prep) and previous sessions (as records)
-- **Decisions** — all decisions routed to this circle, filterable by status
-- **Commitments** — all commitments reviewed in this circle
+- **Decision filter tabs** — All decisions / Open (excludes Taken and Superseded)
+- Each decision links to its full detail view
 
-### Session Detail
-
-The meeting workspace. Designed to be open during the session:
-
-- **Decisions** — reorderable list (drag-and-drop via @dnd-kit). Each row shows title, status badge, and sponsor.
-- **Commitments** — list of commitments under review. Each row shows title, decision reference label, and owner.
-- **Meeting notes** — rich text markdown editor for capturing discussion and context.
-- **Editable title** — inline-editable session title at the top.
-- **Breadcrumb** — `{Circle name} > Session {number} {friendly date}`
+In commitments mode, shows all commitments for the circle.
 
 ### Decision Detail
 
-Full context view for a single decision:
+Full context view for a single decision. Three tabs:
 
-- Header with title, status badge, age indicator
-- Description (markdown)
-- Sponsor, owner (if set), requestor
-- Circle and linked initiative/project
-- References (files and links)
-- Linked commitments that flow from this decision
-- Revisit chain (if this is a revisit of a previous decision)
+- **Overview** — editable statement (InlineText), inline properties row (status, age, owner, requestor, circle), rationale and discussion (MarkdownEditor), implications list
+- **Commitments** — linked commitments table
+- **Activity** — changelog feed
 
-### Initiative View
+Right sidebar (toggleable) mirrors properties in a structured panel. Header includes Escalate and Delegate dialog buttons.
 
-Strategic overview of an initiative and its projects:
+### Commitment Review
 
-- Status, target date, visibility
-- List of projects with lead and latest health
-- Linked decisions across all projects
-- Linked circles (for restricted visibility)
+Detail view for a single commitment. Two tabs:
 
-### Project View
+- **Overview** — alert banner for rolled/at-risk status, editable outcome (InlineText), properties row (status badge, due date, owner, circle), linked decision card
+- **Activity** — changelog feed
 
-Execution detail for a project:
+Right sidebar mirrors properties. Header includes a "Re-commit?" button when status is Rolled or At risk.
 
-- Lead, members, parent initiative
-- Project updates timeline with health indicators
-- Linked decisions and commitments
+### Sessions List
+
+Paginated list of sessions for a circle. Three URL variants render the same component with different data:
+
+- `/circles/:slug/sessions` — all sessions, newest first
+- `/circles/:slug/sessions/upcoming` — future sessions only
+- `/circles/:slug/sessions/previous` — past sessions only
+
+Table columns: session number, title, date, decision count, commitment count, completed check. 10 sessions per page with Previous/Next pagination.
+
+### Session Detail
+
+Meeting workspace designed to be open during a session:
+
+- **Editable title** — plain input styled as heading
+- **Decisions section** — reorderable table (drag-and-drop), compact mode with combined status+owner column. Clicking a decision opens a 480px drawer on the right with rationale, implications, and discussion
+- **Commitments section** — compact table with combined decision ref + owner column
+- **Meeting notes** — TipTap markdown editor
+
+### Initiatives List
+
+Filterable list of initiatives. Status tabs (Active / Planned / Completed) at the top. Filter popover for health and owner. Table columns: icon, title, owner (PersonSelector avatar), target quarter, projects progress (completed/total), health indicator.
+
+### Initiative Detail
+
+Strategic initiative overview. Three tabs:
+
+- **Overview** — clickable icon with picker popover (8 icon/color combos), editable title and summary (InlineText), inline properties (status, health, owner, target via PropertySelect), description (MarkdownEditor)
+- **Updates** — placeholder (coming soon)
+- **Projects** — table of linked projects with owner, health, teams, decision/commitment counts
+
+Right sidebar mirrors properties.
+
+### Projects List
+
+Projects grouped by parent initiative. Group rows show initiative title, project count, and expand/collapse toggle. Filter popover for team and health. Scope tabs: All Projects / My Projects. Table columns: title (with lock icon for private), owner (PersonSelector avatar), health, teams (TeamChips), active decision count, open commitment count.
+
+### Project Detail
+
+Execution detail for a project. Three tabs:
+
+- **Overview** — alert banner if >2 rolled commitments, editable title and description (InlineText), inline properties (health, visibility, owner via PropertySelect, parent initiative link), teams (TeamChips)
+- **Decisions** — lightweight decision list (DecisionList)
+- **Commitments** — lightweight commitment list (CommitmentList)
+
+Right sidebar has: Properties, Signals (open commitments, rolled count, recent decisions), Teams, and People (private projects only — owner, subscribers, invite selector).
+
+Follow/Unfollow button in header for public projects where user is not the owner.
