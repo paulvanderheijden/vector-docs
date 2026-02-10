@@ -7,111 +7,103 @@ This is the conceptual schema for Vector V1. It describes the entities and their
 
 ## Entities
 
-| Entity | Description |
-|---|---|
-| **Person** | A user or member of the organization |
-| **Team** | An organizational unit; people can belong to multiple teams |
-| **Circle** | A recurring forum where decisions are routed and commitments are reviewed |
-| **Session** | A record that a circle actually met |
-| **Initiative** | A strategic bet with status and target date |
-| **Project** | An execution container; belongs to exactly one initiative |
-| **Decision** | A direction-setting artifact routed through a circle |
-| **Commitment** | An execution artifact reviewed in a circle |
-| **Project Update** | A status report on a project |
+| Entity             | Description                                                               |
+| ------------------ | ------------------------------------------------------------------------- |
+| **Workspace**      | The organization                                                          |
+| **Person**         | A user or member of the organization                                      |
+| **Team**           | An organizational unit; people can belong to multiple teams               |
+| **Circle**         | A recurring forum where decisions are routed and commitments are reviewed |
+| **Session**        | A record that a circle actually met                                       |
+| **Initiative**     | A strategic bet with status and target date                               |
+| **Project**        | An execution container; belongs to exactly one initiative                 |
+| **Decision**       | A direction-setting artifact routed through a circle                      |
+| **Commitment**     | An execution artifact reviewed in a circle                                |
+| **Project Update** | A status report on a project                                              |
 
 ## Entity details
 
 ### Person
 
-| Field | Type | Required |
-|---|---|---|
-| `name` | string | yes |
-| `initials` | string | yes |
-| `role` | string | yes |
-| `teams` | Team[] | — |
-
-### Team
-
-| Field | Type | Required |
-|---|---|---|
-| `name` | string | yes |
-| `lead` | Person | yes |
-| `members` | Person[] | — |
+| Field      | Type   | Required |
+| ---------- | ------ | -------- |
+| `name`     | string | yes      |
+| `initials` | string | yes      |
 
 ### Circle
 
-| Field | Type | Required |
-|---|---|---|
-| `name` | string | yes |
-| `purpose` | `Decide` or `Review` | yes |
-| `cadence` | string | yes |
-| `members` | Person[] | yes |
+| Field     | Type     | Required |
+| --------- | -------- | -------- |
+| `name`    | string   | yes      |
+| `cadence` | string   | yes      |
+| `members` | Person[] | yes      |
 
 ### Session
 
-| Field | Type | Required |
-|---|---|---|
-| `number` | integer | yes |
-| `circleId` | Circle | yes |
-| `title` | string | yes |
-| `date` | date | yes |
-| `decisionIds` | Decision[] | — |
-| `commitmentIds` | Commitment[] | — |
-| `notes` | markdown | — |
-| `completed` | boolean | yes |
+| Field           | Type         | Required |
+| --------------- | ------------ | -------- |
+| `number`        | integer      | yes      |
+| `circleId`      | Circle       | yes      |
+| `title`         | string       | yes      |
+| `date`          | date         | yes      |
+| `decisionIds`   | Decision[]   | —        |
+| `commitmentIds` | Commitment[] | —        |
+| `notes`         | markdown     | —        |
+| `completed`     | boolean      | yes      |
 
 ### Initiative
 
-| Field | Type | Required |
-|---|---|---|
-| `name` | string | yes |
-| `status` | `Planned`, `Active`, or `Completed` | yes |
-| `targetDate` | string | yes |
-| `visibility` | `Public` or `Restricted` | yes |
-| `projects` | Project[] | — |
+| Field        | Type                                | Required |
+| ------------ | ----------------------------------- | -------- |
+| `name`       | string                              | yes      |
+| `status`     | `Planned`, `Active`, or `Completed` | yes      |
+| `targetDate` | string                              | yes      |
+| `visibility` | `Public` or `Restricted`            | yes      |
+| `members`    | Person[]                            | —        |
+| `projects`   | Project[]                           | —        |
 
 ### Project
 
-| Field | Type | Required |
-|---|---|---|
-| `name` | string | yes |
-| `initiativeId` | Initiative | yes |
-| `visibility` | `Public` or `Restricted` | yes |
-| `lead` | Person | yes |
+| Field          | Type                     | Required |
+| -------------- | ------------------------ | -------- |
+| `name`         | string                   | yes      |
+| `initiativeId` | Initiative               | yes      |
+| `visibility`   | `Public` or `Restricted` | yes      |
+| `members`      | Person[]                 | —        |
+| `lead`         | Person                   | yes      |
 
 ### Decision
 
-| Field | Type | Required |
-|---|---|---|
-| `statement` | string | yes |
-| `status` | `Draft`, `Proposed`, `Taken`, `Escalated`, `Delegated` | yes |
-| `ownerPersonId` | Person | yes |
-| `forumId` | Circle | yes |
-| `requestedByPersonId` | Person | no |
-| `initiativeId` | Initiative | no |
-| `projectId` | Project | no |
-| `revisitOfDecisionId` | Decision | no |
-| `ageDays` | integer (computed) | — |
+| Field                 | Type                                                   | Required |
+| --------------------- | ------------------------------------------------------ | -------- |
+| `statement`           | string                                                 | yes      |
+| `status`              | `Draft`, `Proposed`, `Taken`, `Escalated`, `Delegated` | yes      |
+| `ownerPersonId`       | Person                                                 | yes      |
+| `forumId`             | Circle                                                 | yes      |
+| `requestedByPersonId` | Person                                                 | no       |
+| `initiativeId`        | Initiative                                             | no       |
+| `projectId`           | Project                                                | no       |
+| `revisitOfDecisionId` | Decision                                               | no       |
+| `ageDays`             | integer (computed)                                     | —        |
 
 ### Commitment
 
-| Field | Type | Required |
-|---|---|---|
-| `outcome` | string | yes |
-| `status` | `Active`, `At risk`, `Rolled`, `Delivered` | yes |
-| `ownerPersonId` | Person | yes |
-| `reviewForumId` | Circle | yes |
-| `decisionId` | Decision | no |
-| `due` | date | yes |
+| Field           | Type                                       | Required |
+| --------------- | ------------------------------------------ | -------- |
+| `outcome`       | string                                     | yes      |
+| `status`        | `Active`, `At risk`, `Rolled`, `Delivered` | yes      |
+| `ownerPersonId` | Person                                     | yes      |
+| `reviewForumId` | Circle                                     | yes      |
+| `decisionId`    | Decision                                   | no       |
+| `due`           | date                                       | yes      |
 
 ### Project Update
 
-| Field | Type | Required |
-|---|---|---|
-| `projectId` | Project | yes |
-| `authorPersonId` | Person | yes |
-| `date` | date | yes |
-| `content` | markdown | yes |
+| Field            | Type     | Required |
+| ---------------- | -------- | -------- |
+| `projectId`      | Project  | yes      |
+| `authorPersonId` | Person   | yes      |
+| `date`           | date     | yes      |
+| `content`        | markdown | yes      |
 
 ## Hard constraints (V1)
 
