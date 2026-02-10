@@ -97,8 +97,9 @@ Reusable decisions table wrapping `DataTable`. Decision-specific columns: ref, s
 | `showDragHandle` | `boolean` | — | Show drag handle |
 | `showHeader` | `boolean` | — | Show table header |
 | `combinedStatusOwner` | `boolean` | `false` | Merge status + owner into single right-aligned column |
+| `personColumn` | `"owner"` / `"sponsor"` | `"owner"` | Which person to show in owner column |
 
-**Used in:** Inbox, MyItems, CircleView, SessionDetail
+**Used in:** Inbox, MyItems, CircleDecisions, SessionDetail
 
 ### CommitmentsTable
 
@@ -117,7 +118,7 @@ Reusable commitments table wrapping `DataTable`. Commitment-specific columns: re
 | `showHeader` | `boolean` | — | Show table header |
 | `combinedStatusOwner` | `boolean` | `false` | Merge decision ref + owner into single column |
 
-**Used in:** MyItems, CircleView, DecisionDetail, SessionDetail
+**Used in:** MyItems, CircleCommitments, DecisionDetail, SessionDetail
 
 ### DecisionList
 
@@ -180,20 +181,6 @@ Renders team names as outlined `Badge` components. Resolves team IDs to names vi
 
 **Used in:** InitiativeDetail (project table), ProjectsList, ProjectDetail (overview + sidebar)
 
-### PersonSelector
-
-`src/components/PersonSelector.tsx`
-
-Avatar-based person picker. Shows a small 18px avatar that opens a popover with the full people list. Can resolve by name or initials.
-
-| Prop | Type | Default | Description |
-|---|---|---|---|
-| `value` | `string` | required | Current person (name or initials) |
-| `onSelect` | `(person) => void` | — | Selection handler |
-| `resolveBy` | `"name"` / `"initials"` | `"name"` | How to resolve `value` to a person |
-
-**Used in:** DecisionsTable (owner cell), CommitmentsTable (owner cell), InitiativesList (owner cell), InitiativeDetail (project table), ProjectsList (owner cell)
-
 ### VisibilityIndicator
 
 `src/components/VisibilityIndicator.tsx`
@@ -206,6 +193,76 @@ Inline icon + label for public/private visibility. Eye / EyeOff icon.
 | `visible` | `boolean` | Public or private |
 
 **Used in:** not yet used (available for future use)
+
+---
+
+## Field Components
+
+Reusable field-type components with a consistent pattern: read-only by default, optionally editable via popover. Used in tables, headers, sidebars, and standalone contexts.
+
+### DateField
+
+`src/components/DateField.tsx`
+
+Contextual date display with tooltip. Shows relative text when ≤7 days ago ("today", "yesterday", "3 days ago"), absolute otherwise ("Jan 15, 2025"). Tooltip shows the opposite format.
+
+| Prop | Type | Default | Description |
+|---|---|---|---|
+| `value` | `string \| Date` | required | Date value (ISO string or Date object) |
+| `editable` | `boolean` | `false` | Enable edit mode (not yet implemented) |
+| `prefix` | `string?` | — | Text prefix (e.g. "Updated") |
+| `className` | `string?` | — | Additional styling |
+
+**Used in:** Strategy (header, last updated date)
+
+### PersonField
+
+`src/components/PersonField.tsx`
+
+Avatar-based person display. Read-only shows avatar + optional name. Editable shows avatar that opens a popover picker with the full people list.
+
+| Prop | Type | Default | Description |
+|---|---|---|---|
+| `value` | `string` | required | Current person (name or initials) |
+| `resolveBy` | `"name"` / `"initials"` | `"name"` | How to resolve `value` to a person |
+| `editable` | `boolean` | `true` | Enable click-to-pick mode |
+| `showName` | `boolean` | `false` | Show person name next to avatar |
+| `onSelect` | `(person) => void` | — | Selection handler |
+| `className` | `string?` | — | Additional styling |
+
+**Used in:** DecisionsTable (owner/sponsor cell), CommitmentsTable (owner cell), InitiativesList (owner cell), InitiativeDetail (project table), ProjectsList (owner cell), Strategy (header, author)
+
+### StatusField
+
+`src/components/StatusField.tsx`
+
+Status badge display. Read-only renders a colored `Badge` using `statusVariant`. Editable renders a clickable badge that opens a popover with status options. Works with both `DecisionStatus` and `CommitmentStatus`.
+
+| Prop | Type | Default | Description |
+|---|---|---|---|
+| `value` | `DecisionStatus \| CommitmentStatus` | required | Current status |
+| `editable` | `boolean` | `false` | Enable click-to-pick mode |
+| `options` | `{ value, label }[]` | — | Available status options (required when editable) |
+| `onSelect` | `(value) => void` | — | Selection handler |
+| `className` | `string?` | — | Additional styling |
+
+**Used in:** DecisionsTable (status cell, combined statusOwner cell), CommitmentsTable (status cell)
+
+### SessionField
+
+`src/components/SessionField.tsx`
+
+Session pill display: chat icon + session number + formatted date. Renders as a `Link` when `circleSlug` is provided, otherwise a static `span`.
+
+| Prop | Type | Default | Description |
+|---|---|---|---|
+| `number` | `number` | required | Session number |
+| `date` | `string` | required | Session date (ISO string) |
+| `circleSlug` | `string?` | — | Circle slug for link (omit for static display) |
+| `editable` | `boolean` | `false` | Enable edit mode (not yet implemented) |
+| `className` | `string?` | — | Additional styling |
+
+**Used in:** DecisionsTable (session cell)
 
 ---
 
