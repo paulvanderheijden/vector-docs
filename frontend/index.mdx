@@ -26,7 +26,7 @@ src/
 ├── main.tsx             # React Router config (all routes)
 ├── components/
 │   ├── ui/              # shadcn primitives (button, badge, data-table, etc.)
-│   └── *.tsx            # Shared feature components (18 total)
+│   └── *.tsx            # Shared feature components (19 total)
 ├── pages/               # One file per screen (13 total)
 ├── hooks/               # usePageHeader, use-mobile
 └── lib/
@@ -34,6 +34,8 @@ src/
     ├── projects-store.ts # Initiatives, projects, teams (separate store)
     └── utils.ts         # cn() classname helper
 ```
+
+**Convention:** `components/` holds shared components used across multiple pages. If a component is only used by a single page, it should live in a `components/<PageName>/` subfolder (e.g. `components/Strategy/TableOfContents.tsx`). This keeps shared components flat and discoverable while preventing the directory from growing with page-specific concerns.
 
 ## Design principles
 

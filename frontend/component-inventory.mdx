@@ -5,6 +5,33 @@ description: "Canonical list of every shared component, its purpose, props, and 
 
 ## Layout Components
 
+### PageTitle
+
+`src/components/PageTitle.tsx`
+
+Page-level heading with consistent typography. Supports both static and editable modes. Wraps `InlineText` internally when editable.
+
+**Static usage:**
+```tsx
+<PageTitle>Strategy</PageTitle>
+```
+
+**Editable usage:**
+```tsx
+<PageTitle editable value={title} onChange={setTitle} />
+```
+
+| Prop | Type | Default | Description |
+|---|---|---|---|
+| `children` | `ReactNode` | — | Static title content (when not editable) |
+| `editable` | `boolean` | `false` | Enable click-to-edit mode |
+| `value` | `string` | — | Current value (editable mode) |
+| `onChange` | `(value) => void` | — | Save handler (editable mode) |
+| `placeholder` | `string?` | — | Placeholder when empty (editable mode) |
+| `className` | `string?` | — | Additional styling |
+
+**Used in:** Strategy (static), DecisionDetail, CommitmentReview, InitiativeDetail, ProjectDetail (all editable)
+
 ### PageHeader / PageHeaderRow / PageHeaderGroup
 
 `src/components/PageHeader.tsx`
@@ -198,7 +225,7 @@ Click-to-edit text field. Shows static text that becomes an input on click. Ente
 | `placeholder` | `string?` | `"Empty"` | Placeholder when empty |
 | `as` | `"div"` / `"h1"` / `"p"` | `"div"` | HTML element to render |
 
-**Used in:** DecisionDetail (statement), CommitmentReview (outcome), InitiativeDetail (title, summary), ProjectDetail (title, description)
+**Used in:** PageTitle (internally, for editable mode), InitiativeDetail (summary), ProjectDetail (description)
 
 ### PropertySelect
 

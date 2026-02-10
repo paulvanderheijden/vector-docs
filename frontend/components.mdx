@@ -148,9 +148,10 @@ Detail pages (DecisionDetail, CommitmentReview, InitiativeDetail, ProjectDetail)
 
 ### Inline editing
 
-Two patterns are used:
+Three components handle inline editing:
 
-- **InlineText** — click-to-edit component that renders static text, switching to an input on click. Used for titles, summaries, descriptions. Supports `as="h1"`, `as="p"`, etc.
+- **PageTitle** — page-level heading that supports both static (`<PageTitle>Strategy</PageTitle>`) and editable (`<PageTitle editable value={...} onChange={...} />`) modes. Wraps InlineText internally. Used for the main h1 on every detail page and Strategy.
+- **InlineText** — lower-level click-to-edit component. Renders static text that becomes an input on click. Supports `as="h1"`, `as="p"`, etc. Used directly for summaries and descriptions (not for page titles — use PageTitle instead).
 - **PropertySelect** — click-to-open popover with options list. Used for status, health, owner, target, visibility. Each option can have an icon. Shows checkmark on selected value.
 
 ### Friendly dates

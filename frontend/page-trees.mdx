@@ -79,7 +79,7 @@ PageHeader (via usePageHeader)
 
 Page body
 ├── Main column (max-w-800)
-│   ├── h1 "Strategy"
+│   ├── PageTitle "Strategy" (static)
 │   └── MarkdownEditor (strategy content)
 └── TOC sidebar (sticky right nav, lg+ only)
     └── Heading links (extracted from editor DOM via useTableOfContents)
@@ -145,7 +145,7 @@ PageHeader (via usePageHeader)
 
 Page body (conditional on active tab)
 ├── Overview tab (max-w-800)
-│   ├── InlineText (decision statement, as h1)
+│   ├── PageTitle (editable, decision statement)
 │   ├── Properties row
 │   │   ├── PropertySelect (status, with Badge icons)
 │   │   ├── Age indicator (colored)
@@ -190,7 +190,7 @@ PageHeader (via usePageHeader)
 Page body (conditional on active tab)
 ├── Overview tab (max-w-800)
 │   ├── Alert banner (rolled = red, at-risk = amber)
-│   ├── InlineText (outcome, as h1)
+│   ├── PageTitle (editable, commitment outcome)
 │   ├── Properties row: Badge (status), due date, owner, circle
 │   └── "Linked Decision" → Link card with Badge + status
 └── Activity tab (max-w-800)
@@ -298,7 +298,7 @@ PageHeader (via usePageHeader)
 Page body (conditional on active tab)
 ├── Overview tab (max-w-800)
 │   ├── Popover → icon picker grid (8 icon/color combos)
-│   ├── InlineText (title, as h1)
+│   ├── PageTitle (editable, initiative title)
 │   ├── InlineText (summary, as p)
 │   ├── Properties row
 │   │   ├── PropertySelect (status)
@@ -360,7 +360,7 @@ PageHeader (via usePageHeader)
 Page body (conditional on active tab)
 ├── Overview tab (max-w-800)
 │   ├── Alert banner (if >2 rolled commitments)
-│   ├── InlineText (title, as h1)
+│   ├── PageTitle (editable, project title)
 │   ├── InlineText (description, as p)
 │   ├── Properties row
 │   │   ├── PropertySelect (health, with colored icons)
