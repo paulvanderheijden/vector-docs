@@ -1,0 +1,72 @@
+---
+title: "Screens"
+description: "Overview of all screens in the Vector frontend."
+---
+
+## Screen map
+
+| Screen | Route | Description |
+|---|---|---|
+| **My Dashboard** | `/` | Personal control view — decisions you own/sponsor, commitments due, items needing attention |
+| **Circle View** | `/circles/{id}` | Circle overview — upcoming/previous sessions, decisions routed here, commitments under review |
+| **Session Detail** | `/circles/{circleId}/sessions/{id}` | Meeting workspace — reorderable decision agenda, commitment review, meeting notes editor |
+| **Decision Detail** | `/decisions/{id}` | Full decision view — title, description, references, status, sponsor, forum, linked commitments |
+| **Initiative View** | `/initiatives/{id}` | Initiative overview — projects, linked decisions, health |
+| **Project View** | `/projects/{id}` | Project detail — updates, linked decisions and commitments, team |
+
+## Screen details
+
+### My Dashboard
+
+The landing page for the authenticated user. Shows a personal view of:
+
+- **Decisions I sponsor** — grouped by status, sorted by age (oldest first)
+- **My commitments** — grouped by status, due dates highlighted
+- **Items needing attention** — rolled commitments, aging decisions, at-risk items
+
+### Circle View
+
+The primary workspace for a circle. Two main sections:
+
+- **Sessions** — upcoming sessions (with agenda prep) and previous sessions (as records)
+- **Decisions** — all decisions routed to this circle, filterable by status
+- **Commitments** — all commitments reviewed in this circle
+
+### Session Detail
+
+The meeting workspace. Designed to be open during the session:
+
+- **Decisions** — reorderable list (drag-and-drop via @dnd-kit). Each row shows title, status badge, and sponsor.
+- **Commitments** — list of commitments under review. Each row shows title, decision reference label, and owner.
+- **Meeting notes** — rich text markdown editor for capturing discussion and context.
+- **Editable title** — inline-editable session title at the top.
+- **Breadcrumb** — `{Circle name} > Session {number} {friendly date}`
+
+### Decision Detail
+
+Full context view for a single decision:
+
+- Header with title, status badge, age indicator
+- Description (markdown)
+- Sponsor, owner (if set), requestor
+- Forum and linked initiative/project
+- References (files and links)
+- Linked commitments that flow from this decision
+- Revisit chain (if this is a revisit of a previous decision)
+
+### Initiative View
+
+Strategic overview of an initiative and its projects:
+
+- Status, target date, visibility
+- List of projects with lead and latest health
+- Linked decisions across all projects
+- Member list
+
+### Project View
+
+Execution detail for a project:
+
+- Lead, members, parent initiative
+- Project updates timeline with health indicators
+- Linked decisions and commitments

@@ -1,0 +1,80 @@
+---
+title: "Components"
+description: "Shared components and patterns in the Vector frontend."
+---
+
+## Core components
+
+### DataTable
+
+Generic data table built on TanStack React Table. Used across all list views.
+
+| Prop | Type | Description |
+|---|---|---|
+| `columns` | ColumnDef[] | Column definitions |
+| `data` | T[] | Row data |
+| `onReorder` | (from, to) => void | Enables drag-and-drop reordering via @dnd-kit |
+| `getRowId` | (row) => string | Stable ID function for sortable rows |
+| `showSelect` | boolean | Show row selection checkboxes (default `true`) |
+| `showDragHandle` | boolean | Show drag handle column (default `true`) |
+| `showHeader` | boolean | Show table header row (default `true`) |
+
+When `onReorder` is provided, rows become draggable via `@dnd-kit/sortable`. Each row is wrapped in a `SortableRow` sub-component. Stable IDs (via `getRowId`) are required for correct drag behavior — array indices don't work because they don't change after reorder.
+
+### DecisionsTable
+
+Wraps DataTable for decision lists. Handles column configuration and visibility.
+
+| Prop | Type | Description |
+|---|---|---|
+| `decisions` | Decision[] | Decision data |
+| `showCircle` | boolean | Show circle column |
+| `showSession` | boolean | Show session column |
+| `showAge` | boolean | Show age column |
+| `combinedStatusOwner` | boolean | Combine status + sponsor in one column |
+| `onReorder` | (from, to) => void | Enable reordering |
+| `onDecisionClick` | (decision) => void | Row click handler |
+
+### CommitmentsTable
+
+Wraps DataTable for commitment lists. Same pattern as DecisionsTable.
+
+| Prop | Type | Description |
+|---|---|---|
+| `commitments` | Commitment[] | Commitment data |
+| `showOwner` | boolean | Show owner column |
+| `showCircle` | boolean | Show circle column |
+| `showDecision` | boolean | Show decision column |
+| `combinedStatusOwner` | boolean | Combine decision ref + owner in one column |
+
+### AppSidebar
+
+Navigation sidebar using Radix Collapsible. Structure:
+
+- **My Items** — link to dashboard
+- **Circles** — expandable sections, one per circle
+  - Sessions (upcoming and recent)
+  - Decisions
+  - Commitments
+- **Initiatives** — expandable sections, one per initiative
+  - Projects
+
+The first circle is expanded by default so new users immediately see the circle features.
+
+## Patterns
+
+### Column visibility
+
+Tables use TanStack's column visibility to show/hide columns based on context. Props like `showCircle`, `showAge` map to `columnVisibility` state.
+
+### Combined columns
+
+On compact views (e.g., Session Detail), status and sponsor are combined into a single right-aligned column using the `combinedStatusOwner` prop. This shows a status badge followed by an avatar.
+
+### Inline editing
+
+Session titles use an inline-editable input — a text field styled to look like a heading that becomes editable on click. Controlled via local state.
+
+### Friendly dates
+
+The `friendlyDate` helper renders dates as "Today", "Tomorrow", "Yesterday", or "Mon DD" format for recent dates.

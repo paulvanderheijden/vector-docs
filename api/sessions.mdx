@@ -1,0 +1,127 @@
+---
+title: "Sessions"
+description: "Manage sessions within a circle."
+---
+
+A session is a record that a circle actually met. It captures which decisions were discussed, which commitments were reviewed, and any meeting notes. Session numbers are auto-generated per circle, starting at 1.
+
+## List sessions
+
+```
+GET /v1/workspaces/{workspaceSlug}/sessions
+```
+
+### Query parameters
+
+| Parameter | Type | Description |
+|---|---|---|
+| `circleId` | string | Filter by circle (required) |
+| `completed` | boolean | Filter by completion status |
+| `cursor` | string | Pagination cursor |
+| `limit` | integer | Page size (default 50, max 200) |
+
+### Response
+
+```json
+{
+  "data": [
+    {
+      "id": "ses_abc123",
+      "number": 11,
+      "circleId": "cir_abc123",
+      "title": "MT Weekly",
+      "date": "2025-02-10",
+      "decisionIds": ["dec_abc123", "dec_def456"],
+      "commitmentIds": ["com_abc123"],
+      "notes": "Sara flagged that vendor contract expires in March.",
+      "completed": true,
+      "createdAt": "2025-02-10T09:00:00Z",
+      "updatedAt": "2025-02-10T11:00:00Z"
+    }
+  ],
+  "hasMore": false,
+  "nextCursor": null
+}
+```
+
+## Get session
+
+```
+GET /v1/workspaces/{workspaceSlug}/sessions/{id}
+```
+
+### Path parameters
+
+| Parameter | Type | Description |
+|---|---|---|
+| `workspaceSlug` | string | Workspace slug |
+| `id` | string | Session ID |
+
+### Response
+
+Returns the full session object.
+
+## Create session
+
+```
+POST /v1/workspaces/{workspaceSlug}/sessions
+```
+
+The `number` field is auto-generated — each circle maintains its own independent sequence.
+
+### Body
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `circleId` | string | yes | Circle this session belongs to |
+| `title` | string | yes | Session title |
+| `date` | string | yes | Date in `YYYY-MM-DD` format |
+| `decisionIds` | string[] | no | Decision IDs on the agenda |
+| `commitmentIds` | string[] | no | Commitment IDs under review |
+| `notes` | string | no | Meeting notes (markdown) |
+| `completed` | boolean | no | Whether the session is complete (default `false`) |
+
+### Response
+
+Returns the created session with `201` status. The `number` field is populated automatically.
+
+## Update session
+
+```
+PATCH /v1/workspaces/{workspaceSlug}/sessions/{id}
+```
+
+### Body
+
+| Field | Type | Description |
+|---|---|---|
+| `title` | string | Session title |
+| `date` | string | Date in `YYYY-MM-DD` format |
+| `decisionIds` | string[] | Decision IDs on the agenda (full replacement) |
+| `commitmentIds` | string[] | Commitment IDs under review (full replacement) |
+| `notes` | string | Meeting notes (markdown) |
+| `completed` | boolean | Whether the session is complete |
+
+<Note>
+  The `number` and `circleId` fields cannot be changed after creation.
+</Note>
+
+### Response
+
+Returns the updated session.
+
+## Fields
+
+| Field | Type | Description |
+|---|---|---|
+| `id` | string | Unique identifier |
+| `number` | integer | Auto-generated sequence number within the circle |
+| `circleId` | string | Circle ID |
+| `title` | string | Session title |
+| `date` | string | Date (`YYYY-MM-DD`) |
+| `decisionIds` | string[] | Decision IDs on the agenda |
+| `commitmentIds` | string[] | Commitment IDs under review |
+| `notes` | string \| null | Meeting notes (markdown) |
+| `completed` | boolean | Whether the session is complete |
+| `createdAt` | string | ISO 8601 timestamp |
+| `updatedAt` | string | ISO 8601 timestamp |

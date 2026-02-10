@@ -1,0 +1,122 @@
+---
+title: "Commitments"
+description: "Manage commitments reviewed in circles."
+---
+
+A commitment is an execution artifact — it tracks who will do what by when. Commitments are reviewed in circle sessions and can optionally flow from a decision.
+
+## List commitments
+
+```
+GET /v1/workspaces/{workspaceSlug}/commitments
+```
+
+### Query parameters
+
+| Parameter | Type | Description |
+|---|---|---|
+| `status` | string | Filter by status: `Active`, `At risk`, `Rolled`, `Delivered` |
+| `circleId` | string | Filter by review circle |
+| `ownerPersonId` | string | Filter by owner |
+| `decisionId` | string | Filter by parent decision |
+| `cursor` | string | Pagination cursor |
+| `limit` | integer | Page size (default 50, max 200) |
+
+### Response
+
+```json
+{
+  "data": [
+    {
+      "id": "com_abc123",
+      "title": "DACH go-live with 3 pilot customers by end of Q1",
+      "description": "Focus on hotels in Munich, Vienna, and Zurich.",
+      "status": "Active",
+      "owner": { "id": "per_def456", "name": "Jakub Novák", "initials": "JN" },
+      "reviewCircle": { "id": "cir_abc123", "name": "MT Weekly" },
+      "decisionId": "dec_abc123",
+      "due": "2025-03-31",
+      "createdAt": "2025-02-01T10:00:00Z",
+      "updatedAt": "2025-02-09T14:00:00Z"
+    }
+  ],
+  "hasMore": false,
+  "nextCursor": null
+}
+```
+
+## Get commitment
+
+```
+GET /v1/workspaces/{workspaceSlug}/commitments/{id}
+```
+
+### Path parameters
+
+| Parameter | Type | Description |
+|---|---|---|
+| `workspaceSlug` | string | Workspace slug |
+| `id` | string | Commitment ID |
+
+### Response
+
+Returns the full commitment object.
+
+## Create commitment
+
+```
+POST /v1/workspaces/{workspaceSlug}/commitments
+```
+
+### Body
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `title` | string | yes | What will be delivered — a concrete, verifiable outcome |
+| `description` | string | no | Additional context or acceptance criteria (markdown) |
+| `status` | string | no | Initial status (default `Active`) |
+| `ownerPersonId` | string | yes | Person ID of the commitment owner |
+| `reviewCircleId` | string | yes | Circle ID where the commitment is reviewed |
+| `decisionId` | string | no | Parent decision ID (if flowing from a decision) |
+| `due` | string | yes | Due date in `YYYY-MM-DD` format |
+
+### Response
+
+Returns the created commitment with `201` status.
+
+## Update commitment
+
+```
+PATCH /v1/workspaces/{workspaceSlug}/commitments/{id}
+```
+
+### Body
+
+| Field | Type | Description |
+|---|---|---|
+| `title` | string | Commitment title |
+| `description` | string | Additional context (markdown) |
+| `status` | string | `Active`, `At risk`, `Rolled`, `Delivered` |
+| `ownerPersonId` | string | Owner person ID |
+| `reviewCircleId` | string | Review circle ID |
+| `decisionId` | string \| null | Parent decision ID |
+| `due` | string | Due date (`YYYY-MM-DD`) |
+
+### Response
+
+Returns the updated commitment.
+
+## Fields
+
+| Field | Type | Description |
+|---|---|---|
+| `id` | string | Unique identifier |
+| `title` | string | Commitment title |
+| `description` | string \| null | Additional context (markdown) |
+| `status` | string | `Active`, `At risk`, `Rolled`, `Delivered` |
+| `owner` | Person | Commitment owner |
+| `reviewCircle` | Circle | Review circle |
+| `decisionId` | string \| null | Parent decision ID |
+| `due` | string | Due date (`YYYY-MM-DD`) |
+| `createdAt` | string | ISO 8601 timestamp |
+| `updatedAt` | string | ISO 8601 timestamp |

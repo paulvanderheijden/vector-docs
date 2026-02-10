@@ -1,0 +1,114 @@
+---
+title: "Project Updates"
+description: "Manage status updates on projects."
+---
+
+A project update is a status report posted by a team member. Each update captures a health assessment and narrative content.
+
+## List project updates
+
+```
+GET /v1/workspaces/{workspaceSlug}/project-updates
+```
+
+### Query parameters
+
+| Parameter | Type | Description |
+|---|---|---|
+| `projectId` | string | Filter by project (required) |
+| `health` | string | Filter by health: `On track`, `At risk`, `Off track` |
+| `cursor` | string | Pagination cursor |
+| `limit` | integer | Page size (default 50, max 200) |
+
+### Response
+
+```json
+{
+  "data": [
+    {
+      "id": "upd_abc123",
+      "projectId": "prj_abc123",
+      "author": { "id": "per_def456", "name": "Jakub Novák", "initials": "JN" },
+      "date": "2025-02-07",
+      "health": "On track",
+      "content": "Pipeline building well. Three pilot conversations in progress.",
+      "createdAt": "2025-02-07T16:00:00Z",
+      "updatedAt": "2025-02-07T16:00:00Z"
+    }
+  ],
+  "hasMore": false,
+  "nextCursor": null
+}
+```
+
+## Get project update
+
+```
+GET /v1/workspaces/{workspaceSlug}/project-updates/{id}
+```
+
+### Path parameters
+
+| Parameter | Type | Description |
+|---|---|---|
+| `workspaceSlug` | string | Workspace slug |
+| `id` | string | Project update ID |
+
+### Response
+
+Returns the full project update object.
+
+## Create project update
+
+```
+POST /v1/workspaces/{workspaceSlug}/project-updates
+```
+
+### Body
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `projectId` | string | yes | Project this update belongs to |
+| `authorPersonId` | string | yes | Person ID of the author |
+| `date` | string | yes | Update date in `YYYY-MM-DD` format |
+| `health` | string | yes | `On track`, `At risk`, or `Off track` |
+| `content` | string | yes | Update content (markdown) |
+
+### Response
+
+Returns the created project update with `201` status.
+
+## Update project update
+
+```
+PATCH /v1/workspaces/{workspaceSlug}/project-updates/{id}
+```
+
+### Body
+
+| Field | Type | Description |
+|---|---|---|
+| `date` | string | Update date |
+| `health` | string | `On track`, `At risk`, or `Off track` |
+| `content` | string | Update content (markdown) |
+
+<Note>
+  The `projectId` and `authorPersonId` fields cannot be changed after creation.
+</Note>
+
+### Response
+
+Returns the updated project update.
+
+## Fields
+
+| Field | Type | Description |
+|---|---|---|
+| `id` | string | Unique identifier |
+| `projectId` | string | Project ID |
+| `author` | Person | Update author |
+| `date` | string | Update date (`YYYY-MM-DD`) |
+| `health` | string | `On track`, `At risk`, or `Off track` |
+| `content` | string | Update content (markdown) |
+| `createdAt` | string | ISO 8601 timestamp |
+| `updatedAt` | string | ISO 8601 timestamp |

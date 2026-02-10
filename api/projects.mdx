@@ -1,0 +1,113 @@
+---
+title: "Projects"
+description: "Manage projects within initiatives."
+---
+
+A project is an execution container that belongs to exactly one initiative. Projects have a lead, members, and can receive status updates.
+
+## List projects
+
+```
+GET /v1/workspaces/{workspaceSlug}/projects
+```
+
+### Query parameters
+
+| Parameter | Type | Description |
+|---|---|---|
+| `initiativeId` | string | Filter by initiative |
+| `visibility` | string | Filter by visibility: `Public`, `Restricted` |
+| `leadPersonId` | string | Filter by project lead |
+| `cursor` | string | Pagination cursor |
+| `limit` | integer | Page size (default 50, max 200) |
+
+### Response
+
+```json
+{
+  "data": [
+    {
+      "id": "prj_abc123",
+      "name": "DACH Sales Pipeline",
+      "initiativeId": "ini_abc123",
+      "visibility": "Public",
+      "lead": { "id": "per_def456", "name": "Jakub Novák", "initials": "JN" },
+      "members": [],
+      "createdAt": "2025-01-15T10:00:00Z",
+      "updatedAt": "2025-02-01T14:00:00Z"
+    }
+  ],
+  "hasMore": false,
+  "nextCursor": null
+}
+```
+
+## Get project
+
+```
+GET /v1/workspaces/{workspaceSlug}/projects/{id}
+```
+
+### Path parameters
+
+| Parameter | Type | Description |
+|---|---|---|
+| `workspaceSlug` | string | Workspace slug |
+| `id` | string | Project ID |
+
+### Response
+
+Returns the full project object.
+
+## Create project
+
+```
+POST /v1/workspaces/{workspaceSlug}/projects
+```
+
+### Body
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `name` | string | yes | Project name |
+| `initiativeId` | string | yes | Parent initiative ID |
+| `visibility` | string | yes | `Public` or `Restricted` |
+| `leadPersonId` | string | yes | Person ID of the project lead |
+| `memberIds` | string[] | no | Person IDs to add as members |
+
+### Response
+
+Returns the created project with `201` status.
+
+## Update project
+
+```
+PATCH /v1/workspaces/{workspaceSlug}/projects/{id}
+```
+
+### Body
+
+| Field | Type | Description |
+|---|---|---|
+| `name` | string | Project name |
+| `initiativeId` | string | Parent initiative ID |
+| `visibility` | string | `Public` or `Restricted` |
+| `leadPersonId` | string | Project lead |
+| `memberIds` | string[] | Person IDs (full replacement) |
+
+### Response
+
+Returns the updated project.
+
+## Fields
+
+| Field | Type | Description |
+|---|---|---|
+| `id` | string | Unique identifier |
+| `name` | string | Project name |
+| `initiativeId` | string | Parent initiative ID |
+| `visibility` | string | `Public` or `Restricted` |
+| `lead` | Person | Project lead |
+| `members` | Person[] | Project members |
+| `createdAt` | string | ISO 8601 timestamp |
+| `updatedAt` | string | ISO 8601 timestamp |

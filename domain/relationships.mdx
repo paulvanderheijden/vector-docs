@@ -5,10 +5,18 @@ description: "How entities connect in the Vector data model."
 
 This page maps the relationships between all entities in Vector. Understanding these connections is key to understanding how the system fits together.
 
+## Identity & access
+
+| Relationship | Cardinality | Notes |
+|---|---|---|
+| Person ↔ Workspace | many to many | Via WorkspaceMember; each membership has a role (Admin or Member) |
+| Person → Workspace (lastActive) | 0 to 1 | Tracks the last workspace the person used |
+
 ## Structural relationships
 
 | Relationship | Cardinality | Notes |
 |---|---|---|
+| Workspace → WorkspaceMember | 1 to many | Each member has a role: Admin or Member |
 | Workspace → Circle | 1 to many | Every circle belongs to a workspace |
 | Workspace → Initiative | 1 to many | Every initiative belongs to a workspace |
 | Workspace → Project | 1 to many | Every project belongs to a workspace |
@@ -58,6 +66,10 @@ This page maps the relationships between all entities in Vector. Understanding t
 | Person → Project Update (author) | 1 to many | Each update has exactly one author |
 
 ## Key design decisions
+
+### Why Person is not workspace-scoped
+
+A person can belong to multiple workspaces. Authentication is at the person level (JWT token), and workspace access is determined by membership. This means a single session can switch between workspaces without re-authenticating. The `lastActiveWorkspace` field stores which workspace to default to on next login.
 
 ### Why decisions live in exactly one circle
 

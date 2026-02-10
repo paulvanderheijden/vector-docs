@@ -1,0 +1,112 @@
+---
+title: "Circles"
+description: "Manage circles (forums) in a workspace."
+---
+
+A circle is a recurring forum where decisions are routed and commitments are reviewed. Each circle has a cadence and a list of members with roles.
+
+## List circles
+
+```
+GET /v1/workspaces/{workspaceSlug}/circles
+```
+
+### Query parameters
+
+| Parameter | Type | Description |
+|---|---|---|
+| `cursor` | string | Pagination cursor |
+| `limit` | integer | Page size (default 50, max 200) |
+
+### Response
+
+```json
+{
+  "data": [
+    {
+      "id": "cir_abc123",
+      "name": "MT Weekly",
+      "cadence": "Weekly (Mon)",
+      "members": [
+        { "personId": "per_abc123", "role": "Organizer" },
+        { "personId": "per_def456", "role": "Member" }
+      ],
+      "createdAt": "2025-01-15T10:00:00Z",
+      "updatedAt": "2025-01-15T10:00:00Z"
+    }
+  ],
+  "hasMore": false,
+  "nextCursor": null
+}
+```
+
+## Get circle
+
+```
+GET /v1/workspaces/{workspaceSlug}/circles/{id}
+```
+
+### Path parameters
+
+| Parameter | Type | Description |
+|---|---|---|
+| `workspaceSlug` | string | Workspace slug |
+| `id` | string | Circle ID |
+
+### Response
+
+Returns the full circle object.
+
+## Create circle
+
+```
+POST /v1/workspaces/{workspaceSlug}/circles
+```
+
+### Body
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `name` | string | yes | Circle name |
+| `cadence` | string | yes | Meeting cadence (e.g., "Weekly (Mon)", "Biweekly", "Monthly") |
+| `members` | CircleMember[] | yes | At least one member |
+
+A **CircleMember** object:
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `personId` | string | yes | Person ID |
+| `role` | string | yes | `Member` or `Organizer` |
+
+### Response
+
+Returns the created circle with `201` status.
+
+## Update circle
+
+```
+PATCH /v1/workspaces/{workspaceSlug}/circles/{id}
+```
+
+### Body
+
+| Field | Type | Description |
+|---|---|---|
+| `name` | string | Circle name |
+| `cadence` | string | Meeting cadence |
+| `members` | CircleMember[] | Full replacement of member list |
+
+### Response
+
+Returns the updated circle.
+
+## Fields
+
+| Field | Type | Description |
+|---|---|---|
+| `id` | string | Unique identifier |
+| `name` | string | Circle name |
+| `cadence` | string | Meeting cadence |
+| `members` | CircleMember[] | List of members with roles |
+| `createdAt` | string | ISO 8601 timestamp |
+| `updatedAt` | string | ISO 8601 timestamp |

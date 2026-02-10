@@ -1,0 +1,165 @@
+---
+title: "Decisions"
+description: "Manage decisions routed through circles."
+---
+
+A decision is a direction-setting artifact routed through a circle. It has a sponsor who drives it to resolution, an optional owner, and a required requestor.
+
+## List decisions
+
+```
+GET /v1/workspaces/{workspaceSlug}/decisions
+```
+
+### Query parameters
+
+| Parameter | Type | Description |
+|---|---|---|
+| `status` | string | Filter by status: `Draft`, `Proposed`, `Scheduled`, `Rolled`, `Taken` |
+| `circleId` | string | Filter by forum (circle) |
+| `sponsorPersonId` | string | Filter by sponsor |
+| `ownerPersonId` | string | Filter by owner |
+| `requestedByPersonId` | string | Filter by requestor |
+| `initiativeId` | string | Filter by initiative |
+| `projectId` | string | Filter by project |
+| `cursor` | string | Pagination cursor |
+| `limit` | integer | Page size (default 50, max 200) |
+
+### Response
+
+```json
+{
+  "data": [
+    {
+      "id": "dec_abc123",
+      "title": "Prioritize DACH launch over Nordics expansion",
+      "description": "We need to focus resources. The DACH market has stronger signals.",
+      "status": "Scheduled",
+      "sponsor": { "id": "per_abc123", "name": "Matt Welle", "initials": "MW" },
+      "owner": null,
+      "circle": { "id": "cir_abc123", "name": "MT Weekly" },
+      "requestedBy": { "id": "per_def456", "name": "Jakub Novák", "initials": "JN" },
+      "requestedDate": "2025-02-01",
+      "initiativeId": "ini_abc123",
+      "projectId": null,
+      "revisitOfDecisionId": null,
+      "references": [],
+      "ageDays": 9,
+      "createdAt": "2025-02-01T10:00:00Z",
+      "updatedAt": "2025-02-09T14:00:00Z"
+    }
+  ],
+  "hasMore": false,
+  "nextCursor": null
+}
+```
+
+## Get decision
+
+```
+GET /v1/workspaces/{workspaceSlug}/decisions/{id}
+```
+
+### Path parameters
+
+| Parameter | Type | Description |
+|---|---|---|
+| `workspaceSlug` | string | Workspace slug |
+| `id` | string | Decision ID |
+
+### Response
+
+Returns the full decision object.
+
+## Create decision
+
+```
+POST /v1/workspaces/{workspaceSlug}/decisions
+```
+
+### Body
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `title` | string | yes | Decision title — a clear, actionable statement |
+| `description` | string | no | Background context and options (markdown) |
+| `status` | string | no | Initial status (default `Draft`) |
+| `sponsorPersonId` | string | yes | Person ID of the circle sponsor |
+| `ownerPersonId` | string | no | Person ID of the decision owner |
+| `circleId` | string | yes | Circle ID where the decision is routed |
+| `requestedByPersonId` | string | yes | Person ID of the requestor |
+| `requestedDate` | string | no | Date the decision was requested (`YYYY-MM-DD`) |
+| `initiativeId` | string | no | Linked initiative ID |
+| `projectId` | string | no | Linked project ID |
+| `revisitOfDecisionId` | string | no | ID of the decision being revisited |
+
+### Response
+
+Returns the created decision with `201` status. The `ageDays` field is computed automatically.
+
+## Update decision
+
+```
+PATCH /v1/workspaces/{workspaceSlug}/decisions/{id}
+```
+
+### Body
+
+| Field | Type | Description |
+|---|---|---|
+| `title` | string | Decision title |
+| `description` | string | Background context (markdown) |
+| `status` | string | `Draft`, `Proposed`, `Scheduled`, `Rolled`, `Taken` |
+| `sponsorPersonId` | string | Sponsor person ID |
+| `ownerPersonId` | string \| null | Owner person ID (set to `null` to clear) |
+| `circleId` | string | Circle ID |
+| `requestedByPersonId` | string | Requestor person ID |
+| `requestedDate` | string | Date requested |
+| `initiativeId` | string \| null | Linked initiative ID |
+| `projectId` | string \| null | Linked project ID |
+| `revisitOfDecisionId` | string \| null | Revisit link |
+
+### Response
+
+Returns the updated decision.
+
+## Manage references
+
+### Add a reference
+
+```
+POST /v1/workspaces/{workspaceSlug}/decisions/{id}/references
+```
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `type` | string | yes | `file` or `link` |
+| `url` | string | yes | URL to the file or external link |
+| `title` | string | no | Display title |
+
+### Remove a reference
+
+```
+DELETE /v1/workspaces/{workspaceSlug}/decisions/{id}/references/{referenceId}
+```
+
+## Fields
+
+| Field | Type | Description |
+|---|---|---|
+| `id` | string | Unique identifier |
+| `title` | string | Decision title |
+| `description` | string \| null | Background context (markdown) |
+| `status` | string | `Draft`, `Proposed`, `Scheduled`, `Rolled`, `Taken` |
+| `sponsor` | Person | Circle sponsor |
+| `owner` | Person \| null | Decision owner (optional) |
+| `circle` | Circle | Circle where the decision is routed |
+| `requestedBy` | Person | Person who raised the decision |
+| `requestedDate` | string \| null | Date requested |
+| `initiativeId` | string \| null | Linked initiative ID |
+| `projectId` | string \| null | Linked project ID |
+| `revisitOfDecisionId` | string \| null | ID of the decision being revisited |
+| `references` | Reference[] | Attached files and links |
+| `ageDays` | integer | Days since creation (computed) |
+| `createdAt` | string | ISO 8601 timestamp |
+| `updatedAt` | string | ISO 8601 timestamp |

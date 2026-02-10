@@ -9,8 +9,8 @@ This is the conceptual schema for Vector V1. It describes the entities and their
 
 | Entity             | Description                                                               |
 | ------------------ | ------------------------------------------------------------------------- |
-| **Workspace**      | The organization                                                          |
-| **Person**         | A user or member of the organization                                      |
+| **Workspace**      | The organization; people access it via membership                         |
+| **Person**         | A user; can belong to multiple workspaces                                 |
 | **Team**           | An organizational unit; people can belong to multiple teams               |
 | **Circle**         | A recurring forum where decisions are routed and commitments are reviewed |
 | **Session**        | A record that a circle actually met                                       |
@@ -24,18 +24,30 @@ This is the conceptual schema for Vector V1. It describes the entities and their
 
 ### Workspace
 
-| Field  | Type   | Required |
-| ------ | ------ | -------- |
-| `name` | string | yes      |
-| `slug` | string | yes      |
-| `logo` | string | no       |
+| Field     | Type               | Required |
+| --------- | ------------------ | -------- |
+| `name`    | string             | yes      |
+| `slug`    | string (unique)    | yes      |
+| `logo`    | string             | no       |
+| `members` | WorkspaceMember[]  | yes      |
+
+A **WorkspaceMember** is `{ personId, role }` where role is:
+
+| Value | Description |
+|---|---|
+| `Admin` | Can manage workspace settings, invite/remove people, create/edit circles, and manage all entities |
+| `Member` | Can view and create entities within the workspace; cannot manage workspace settings or membership |
 
 ### Person
 
-| Field      | Type   | Required |
-| ---------- | ------ | -------- |
-| `name`     | string | yes      |
-| `initials` | string | yes      |
+| Field                  | Type      | Required |
+| ---------------------- | --------- | -------- |
+| `name`                 | string    | yes      |
+| `email`                | string    | yes      |
+| `initials`             | string    | yes      |
+| `lastActiveWorkspace`  | Workspace | no       |
+
+A person is **not** workspace-scoped — they can belong to multiple workspaces via `WorkspaceMember`. Authentication is at the person level; workspace access is determined by membership.
 
 ### Circle
 
@@ -46,7 +58,12 @@ This is the conceptual schema for Vector V1. It describes the entities and their
 | `cadence`     | string           | yes      |
 | `members`     | CircleMember[]   | yes      |
 
-A **CircleMember** is `{ personId, role }` where role is `Member` or `Organizer`. Organizers are members with elevated rights — they are responsible for preparing sessions, setting the agenda, ensuring decisions are ready, and reviewing commitments before the meeting.
+A **CircleMember** is `{ personId, role }` where role is:
+
+| Value | Description |
+|---|---|
+| `Member` | Can see all circle content, be assigned as sponsor or commitment owner, and attend sessions |
+| `Organizer` | All member capabilities, plus: manage session agendas, schedule decisions, and mark sessions as completed |
 
 ### Session
 
@@ -69,11 +86,26 @@ Session numbers are auto-generated per circle, starting at 1. Each circle has it
 | -------------- | ----------------------------------- | -------- |
 | `workspaceId`  | Workspace                           | yes      |
 | `name`         | string                              | yes      |
-| `status`       | `Planned`, `Active`, or `Completed` | yes      |
+| `status`       | InitiativeStatus                    | yes      |
 | `targetDate`   | string                              | yes      |
-| `visibility`   | `Public` or `Restricted`            | yes      |
+| `visibility`   | Visibility                          | yes      |
 | `members`      | Person[]                            | —        |
 | `projects`     | Project[]                           | —        |
+
+**InitiativeStatus** values:
+
+| Value | Description |
+|---|---|
+| `Planned` | The initiative has been defined but work has not started |
+| `Active` | The initiative is in progress — projects are being executed |
+| `Completed` | The initiative has been delivered or closed |
+
+**Visibility** values (shared by Initiative and Project):
+
+| Value | Description |
+|---|---|
+| `Public` | Visible to everyone in the workspace |
+| `Restricted` | Only visible to explicit subscribers plus the owner/lead |
 
 ### Project
 
@@ -93,10 +125,10 @@ Session numbers are auto-generated per circle, starting at 1. Each circle has it
 | `workspaceId`         | Workspace                                               | yes      |
 | `title`               | string                                                  | yes      |
 | `description`         | markdown                                                | no       |
-| `status`              | `Draft`, `Proposed`, `Scheduled`, `Rolled`, `Taken`     | yes      |
+| `status`              | DecisionStatus                                          | yes      |
 | `ownerPersonId`       | Person                                                  | no       |
 | `sponsorPersonId`     | Person                                                  | yes      |
-| `forumId`             | Circle                                                  | yes      |
+| `circleId`            | Circle                                                  | yes      |
 | `requestedByPersonId` | Person                                                  | yes      |
 | `requestedDate`       | date                                                    | no       |
 | `initiativeId`        | Initiative                                              | no       |
@@ -104,6 +136,16 @@ Session numbers are auto-generated per circle, starting at 1. Each circle has it
 | `revisitOfDecisionId` | Decision                                                | no       |
 | `references`          | Reference[]                                             | —        |
 | `ageDays`             | integer (computed)                                      | —        |
+
+**DecisionStatus** values:
+
+| Value | Description |
+|---|---|
+| `Draft` | Created but not ready for discussion. The sponsor is gathering context and framing options. |
+| `Proposed` | Ready for the circle. Available to be placed on a session agenda. |
+| `Scheduled` | Placed on a specific session's agenda. The sponsor has confirmed it's ready for discussion. |
+| `Rolled` | Was on the agenda but not resolved in the session. Carries over to the next session — the age counter keeps ticking. |
+| `Taken` | The circle made the call. The decision is closed and commitments may be created from it. |
 
 A **Reference** is a file or link attached to a decision for context (e.g., a document, spreadsheet, or external URL).
 
@@ -114,11 +156,20 @@ A **Reference** is a file or link attached to a decision for context (e.g., a do
 | `workspaceId`   | Workspace                                  | yes      |
 | `title`         | string                                     | yes      |
 | `description`   | markdown                                   | no       |
-| `status`        | `Active`, `At risk`, `Rolled`, `Delivered` | yes      |
+| `status`        | CommitmentStatus                           | yes      |
 | `ownerPersonId` | Person                                     | yes      |
-| `reviewForumId` | Circle                                     | yes      |
+| `reviewCircleId` | Circle                                    | yes      |
 | `decisionId`    | Decision                                   | no       |
 | `due`           | date                                       | yes      |
+
+**CommitmentStatus** values:
+
+| Value | Description |
+|---|---|
+| `Active` | On track, being worked on. The owner is progressing toward the due date. |
+| `At risk` | The owner or circle has flagged potential slippage. May still be delivered on time. |
+| `Rolled` | The due date passed without delivery. The commitment visibly carries over to the next session. |
+| `Delivered` | The outcome has been completed. The commitment is closed. |
 
 ### Project Update
 
@@ -127,15 +178,23 @@ A **Reference** is a file or link attached to a decision for context (e.g., a do
 | `projectId`      | Project                                    | yes      |
 | `authorPersonId` | Person                                     | yes      |
 | `date`           | date                                       | yes      |
-| `health`         | `On track`, `At risk`, or `Off track`      | yes      |
+| `health`         | ProjectHealth                              | yes      |
 | `content`        | markdown                                   | yes      |
+
+**ProjectHealth** values:
+
+| Value | Description |
+|---|---|
+| `On track` | The project is progressing as expected. No blockers or risks. |
+| `At risk` | There are concerns — potential delays, blockers, or dependencies that may cause problems. |
+| `Off track` | The project is behind schedule or has significant issues that need intervention. |
 
 ## Hard constraints (V1)
 
 - A decision must have exactly **one sponsor**
-- A decision must have exactly **one active forum**
+- A decision must have exactly **one active circle**
 - A commitment must have exactly **one owner**
-- A commitment must have exactly **one review forum**
+- A commitment must have exactly **one review circle**
 - A project must belong to exactly **one initiative**
 - Restricted initiatives/projects: only subscribers + owner/lead can view
 

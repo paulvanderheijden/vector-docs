@@ -1,0 +1,141 @@
+---
+title: "Authentication"
+description: "Login, token refresh, logout, and current user endpoints."
+---
+
+Authentication endpoints are not workspace-scoped. They operate at the person level.
+
+## Login
+
+```
+POST /v1/auth/token
+```
+
+Authenticates a user and returns JWT tokens along with user profile and workspace list.
+
+### Body
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `email` | string | yes | User email |
+| `password` | string | yes | User password |
+
+### Response
+
+```json
+{
+  "access": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+  "refresh": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+  "user": {
+    "id": "per_abc123",
+    "name": "Matt Welle",
+    "email": "matt@mews.com",
+    "initials": "MW"
+  },
+  "workspaces": [
+    {
+      "id": "ws_abc123",
+      "name": "Mews",
+      "slug": "mews",
+      "role": "Admin"
+    }
+  ],
+  "lastActiveWorkspace": "mews"
+}
+```
+
+The `workspaces` array includes the person's role in each workspace. The `lastActiveWorkspace` slug indicates where to redirect the user on login.
+
+<Note>
+  If fetching the workspace list fails during login, the auth still succeeds — the response returns an empty `workspaces` array. This prevents secondary query failures from blocking login entirely.
+</Note>
+
+## Refresh token
+
+```
+POST /v1/auth/token/refresh
+```
+
+Returns a new access token using a valid refresh token.
+
+### Body
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `refresh` | string | yes | The refresh token |
+
+### Response
+
+```json
+{
+  "access": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+}
+```
+
+### Error
+
+Returns `401` if the refresh token is expired or blacklisted.
+
+<Warning>
+  Frontend implementations must use a retry flag when handling 401s to prevent infinite refresh loops. If a refresh attempt itself returns 401, clear both tokens and redirect to login — do not retry.
+</Warning>
+
+## Logout
+
+```
+POST /v1/auth/logout
+```
+
+Blacklists the refresh token, preventing further use.
+
+### Body
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `refresh` | string | yes | The refresh token to blacklist |
+
+### Response
+
+`205 Reset Content` — no body.
+
+The frontend should clear both `accessToken` and `refreshToken` from `localStorage` after calling this endpoint.
+
+## Current user
+
+```
+GET /v1/me
+```
+
+Returns the authenticated user's profile and workspace memberships.
+
+### Response
+
+```json
+{
+  "id": "per_abc123",
+  "name": "Matt Welle",
+  "email": "matt@mews.com",
+  "initials": "MW",
+  "lastActiveWorkspace": "mews",
+  "workspaces": [
+    {
+      "id": "ws_abc123",
+      "name": "Mews",
+      "slug": "mews",
+      "role": "Admin"
+    }
+  ],
+  "createdAt": "2025-01-15T10:00:00Z",
+  "updatedAt": "2025-02-10T09:00:00Z"
+}
+```
+
+## Token settings
+
+| Setting | Value |
+|---|---|
+| Access token lifetime | 30 minutes |
+| Refresh token lifetime | 7 days |
+| Token rotation | Disabled — blacklisting on logout only |
+| Header format | `Authorization: Bearer <access-token>` |
+| Storage | `localStorage` (frontend) |

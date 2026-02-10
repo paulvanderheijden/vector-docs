@@ -1,0 +1,126 @@
+---
+title: "API Overview"
+description: "The Vector REST API."
+---
+
+The Vector API is a RESTful JSON API. Authentication is at the user level via JWT tokens. Workspace-scoped resources are nested under a workspace path.
+
+## Base URL
+
+```
+https://api.vectorapp.io/v1
+```
+
+## Authentication
+
+Vector uses JWT (JSON Web Tokens) with an access + refresh token pattern.
+
+### Obtaining tokens
+
+```
+POST /v1/auth/token
+
+Request:  { "email": "matt@mews.com", "password": "..." }
+Response: { "access": "eyJ...", "refresh": "eyJ...", "user": {...}, "workspaces": [...] }
+```
+
+The login response includes the user profile and their workspace list — no second call needed.
+
+### Using tokens
+
+All requests require a Bearer token in the `Authorization` header:
+
+```
+Authorization: Bearer <access-token>
+```
+
+Tokens are scoped to a **person**, not a workspace. A single token can access any workspace the person belongs to.
+
+### Token lifecycle
+
+| Token | Lifetime | Storage |
+|---|---|---|
+| Access token | 30 minutes | `localStorage` |
+| Refresh token | 7 days | `localStorage` |
+
+When the access token expires, use the refresh endpoint to get a new one. On logout, the refresh token is blacklisted server-side.
+
+See the [Authentication endpoints](/api/auth) for full details.
+
+## Workspace scoping
+
+Most resources belong to a workspace. These endpoints are nested under the workspace slug:
+
+```
+/v1/workspaces/{workspaceSlug}/circles
+/v1/workspaces/{workspaceSlug}/decisions
+/v1/workspaces/{workspaceSlug}/commitments
+...
+```
+
+The server verifies that the authenticated person is a member of the workspace on every request. If not, the request returns `404`.
+
+Top-level endpoints that are **not** workspace-scoped:
+- `/v1/auth/*` — authentication
+- `/v1/workspaces` — list workspaces the person belongs to
+- `/v1/me` — current user profile
+
+## Common patterns
+
+### IDs
+
+All entities have a unique `id` field (UUID). IDs are assigned by the server on creation.
+
+### Timestamps
+
+All entities include `createdAt` and `updatedAt` timestamps in ISO 8601 format.
+
+### Pagination
+
+List endpoints return paginated results:
+
+```json
+{
+  "data": [...],
+  "hasMore": true,
+  "nextCursor": "abc123"
+}
+```
+
+Pass `cursor` as a query parameter to fetch the next page. Default page size is 50, max is 200.
+
+### Filtering
+
+List endpoints support filtering via query parameters. Common filters:
+
+| Parameter | Description |
+|---|---|
+| `status` | Filter by status value |
+| `circleId` | Filter by circle |
+| `initiativeId` | Filter by initiative |
+| `projectId` | Filter by project |
+| `ownerPersonId` | Filter by owner |
+| `sponsorPersonId` | Filter by sponsor |
+
+### Errors
+
+Errors follow a consistent format:
+
+```json
+{
+  "error": {
+    "code": "not_found",
+    "message": "Decision not found"
+  }
+}
+```
+
+| HTTP Status | Meaning |
+|---|---|
+| `400` | Bad request — invalid parameters |
+| `401` | Unauthorized — missing or invalid token |
+| `403` | Forbidden — insufficient permissions (e.g., Member trying Admin action) |
+| `404` | Not found — or no access to the workspace |
+| `422` | Unprocessable — validation failed |
+| `429` | Rate limited |
+| `500` | Internal server error |

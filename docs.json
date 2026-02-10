@@ -11,7 +11,7 @@
   "navigation": {
     "tabs": [
       {
-        "tab": "Product Guide",
+        "tab": "Product",
         "groups": [
           {
             "group": "Getting Started",
@@ -47,12 +47,64 @@
               "playbook/running-meetings",
               "playbook/tracking-commitments"
             ]
+          }
+        ]
+      },
+      {
+        "tab": "Frontend",
+        "groups": [
+          {
+            "group": "Overview",
+            "pages": [
+              "frontend/index"
+            ]
+          },
+          {
+            "group": "Architecture",
+            "pages": [
+              "frontend/screens",
+              "frontend/components"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "Backend",
+        "groups": [
+          {
+            "group": "Overview",
+            "pages": [
+              "backend/index"
+            ]
+          },
+          {
+            "group": "Architecture",
+            "pages": [
+              "backend/auth-and-tenancy",
+              "backend/permissions"
+            ]
           },
           {
             "group": "Domain Model",
             "pages": [
               "domain/schema",
               "domain/relationships"
+            ]
+          },
+          {
+            "group": "API Reference",
+            "pages": [
+              "api/index",
+              "api/auth",
+              "api/workspaces",
+              "api/persons",
+              "api/circles",
+              "api/sessions",
+              "api/initiatives",
+              "api/projects",
+              "api/decisions",
+              "api/commitments",
+              "api/project-updates"
             ]
           }
         ]
