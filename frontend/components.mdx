@@ -80,11 +80,21 @@ Wraps `DataTable` for commitment lists. Same pattern as DecisionsTable.
 | `showHeader` | `boolean` | — | Show table header |
 | `combinedStatusOwner` | `boolean` | `false` | Merge decision ref label + owner avatar into a single right-aligned column (hides individual owner, status, due, and decision columns) |
 
+### EntityIcon
+
+`src/components/EntityIcon.tsx`
+
+Centralized icon map for all domain entities. Maps each `EntityType` to its canonical Lucide icon. Every entity icon reference in the app goes through this component to ensure consistency. Size is controlled via `className`.
+
+```tsx
+<EntityIcon type="decision" className="h-3 w-3" />
+```
+
 ### AppSidebar
 
 `src/components/AppSidebar.tsx`
 
-Navigation sidebar using shadcn `Sidebar*` primitives and Radix `Collapsible`.
+Navigation sidebar using shadcn `Sidebar*` primitives and Radix `Collapsible`. All entity icons use `EntityIcon`.
 
 **Structure:**
 - **Header** — workspace logo + name ("Mews")

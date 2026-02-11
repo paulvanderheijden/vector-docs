@@ -103,11 +103,44 @@ Exports `usePropertiesEditable()` hook for field components to read the inherite
 
 **Used in:** DecisionDetail, CommitmentReview, InitiativeDetail, ProjectDetail (both inline and stacked)
 
+### EntityIcon
+
+`src/components/EntityIcon.tsx`
+
+Centralized icon map for all domain entities. Renders the canonical Lucide icon for a given entity type. Single source of truth — all entity icon references across the app go through this component.
+
+```tsx
+<EntityIcon type="decision" className="h-3.5 w-3.5" />
+```
+
+| Prop | Type | Default | Description |
+|---|---|---|---|
+| `type` | `EntityType` | required | Entity type to render icon for |
+| `className` | `string?` | — | Size and style overrides (e.g. `"h-3 w-3"`) |
+
+**Entity → Icon mapping:**
+
+| Type | Lucide Icon |
+|---|---|
+| `decision` | `Split` |
+| `commitment` | `Hexagon` |
+| `session` | `MessageCircleMore` |
+| `circle` | `SquareUserRound` |
+| `initiative` | `Rocket` |
+| `project` | `Box` |
+| `strategy` | `Compass` |
+| `inbox` | `Inbox` |
+| `myItems` | `IterationCcw` |
+
+Also exports the `EntityType` union type.
+
+**Used in:** AppSidebar (all nav icons), ProjectsList (decision/commitment column headers + cells), InitiativeDetail (decision/commitment column headers + cells), SessionField (session pill icon)
+
 ### AppSidebar
 
 `src/components/AppSidebar.tsx`
 
-Main navigation sidebar. Uses shadcn `Sidebar*` primitives + Radix `Collapsible`. Structure:
+Main navigation sidebar. Uses shadcn `Sidebar*` primitives + Radix `Collapsible`. All entity icons use `EntityIcon` component. Structure:
 
 - **Top-level links** — Inbox, My Items
 - **Workspace section** — Strategy, Initiatives, Projects, Circles
@@ -265,7 +298,7 @@ Contextual date display with tooltip. Shows relative text when ≤7 days ago ("t
 
 `src/components/PersonField.tsx`
 
-Avatar-based person display with nullable support. Read-only shows avatar + optional name. Editable shows avatar that opens a popover picker with the full people list. When `value` is `null`, displays a muted `CircleUser` placeholder icon (and "Add {title}" text when `showName` is true). Non-editable null state shows the icon with "None" text.
+Avatar-based person display with nullable support. Read-only shows avatar + optional name. Editable shows avatar that opens a popover picker with the full people list. When `value` is `null`, displays a muted placeholder icon (and "Add {title}" text when `showName` is true). Non-editable null state shows the icon with "None" text.
 
 | Prop | Type | Default | Description |
 |---|---|---|---|
@@ -277,7 +310,7 @@ Avatar-based person display with nullable support. Read-only shows avatar + opti
 | `onSelect` | `(person \| null) => void` | — | Selection handler; passes `null` when "No {title}" is chosen |
 | `className` | `string?` | — | Additional styling |
 
-When `title` is provided and the field is editable, the dropdown prepends a "No {title}" option (with `CircleUser` icon) that clears the selection.
+When `title` is provided and the field is editable, the dropdown prepends a "No {title}" option that clears the selection.
 
 **Used in:** DecisionsTable (owner/sponsor cell), CommitmentsTable (owner cell), DecisionDetail (sidebar: requested by, sponsor, owner), InitiativesList (owner cell), InitiativeDetail (project table), ProjectsList (owner cell), Strategy (header, author)
 
@@ -301,14 +334,13 @@ Status badge display. Read-only renders a colored `Badge` using `statusVariant`.
 
 `src/components/SessionField.tsx`
 
-Session pill display: chat icon + session number + formatted date. Renders as a `Link` when `circleSlug` is provided, otherwise a static `span`.
+Session pill display: `EntityIcon` session icon + `#number` + relative date. Renders as a `Link` when `circleSlug` is provided, otherwise a static `span`. Date is formatted as relative ("today", "yesterday", "3d ago", "in 2d") for ≤7 days, otherwise "DD Mon".
 
 | Prop | Type | Default | Description |
 |---|---|---|---|
 | `number` | `number` | required | Session number |
-| `date` | `string` | required | Session date (ISO string) |
+| `date` | `string?` | — | Session date (ISO string, optional) |
 | `circleSlug` | `string?` | — | Circle slug for link (omit for static display) |
-| `editable` | `boolean` | `false` | Enable edit mode (not yet implemented) |
 | `className` | `string?` | — | Additional styling |
 
 **Used in:** DecisionsTable (session cell)
