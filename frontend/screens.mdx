@@ -78,11 +78,11 @@ Single-page view for a single decision with an always-open right sidebar (288px)
 
 **Always-open sidebar:**
 - Status (editable StatusField)
-- Requested by (read-only PersonField with name)
+- Requested by (read-only PersonField with name, title="Requested by")
 - Age (color-coded)
 - Circle (link)
-- Sponsor (editable PersonField with name)
-- Owner (editable PersonField with name)
+- Sponsor (nullable PersonField — shows "Add Sponsor" placeholder when unset, editable with "No Sponsor" clear option)
+- Owner (nullable PersonField — shows "Add Owner" placeholder when unset, editable with "No Owner" clear option)
 
 ### Commitment Review
 

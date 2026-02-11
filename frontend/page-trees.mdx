@@ -169,11 +169,11 @@ Sidebar (fixed right, 288px, always open)
 └── SidebarSection "Properties"
     └── PropertiesRow (stacked)
         ├── PropertiesRow.Item "Status" → StatusField (editable)
-        ├── PropertiesRow.Item "Requested" → PersonField (read-only, showName)
+        ├── PropertiesRow.Item "Requested" → PersonField (read-only, showName, title="Requested by")
         ├── PropertiesRow.Item "Age" → colored text
         ├── PropertiesRow.Item "Circle" → Link
-        ├── PropertiesRow.Item "Sponsor" → PersonField (editable, showName)
-        └── PropertiesRow.Item "Owner" → PersonField (editable, showName)
+        ├── PropertiesRow.Item "Sponsor" → PersonField (nullable, editable, showName, title="Sponsor")
+        └── PropertiesRow.Item "Owner" → PersonField (nullable, editable, showName, title="Owner")
 ```
 
 ---

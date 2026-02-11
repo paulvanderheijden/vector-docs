@@ -265,16 +265,19 @@ Contextual date display with tooltip. Shows relative text when ≤7 days ago ("t
 
 `src/components/PersonField.tsx`
 
-Avatar-based person display. Read-only shows avatar + optional name. Editable shows avatar that opens a popover picker with the full people list.
+Avatar-based person display with nullable support. Read-only shows avatar + optional name. Editable shows avatar that opens a popover picker with the full people list. When `value` is `null`, displays a muted `CircleUser` placeholder icon (and "Add {title}" text when `showName` is true). Non-editable null state shows the icon with "None" text.
 
 | Prop | Type | Default | Description |
 |---|---|---|---|
-| `value` | `string` | required | Current person (name or initials) |
+| `value` | `string \| null` | required | Current person (name or initials), or `null` for unassigned |
 | `resolveBy` | `"name"` / `"initials"` | `"name"` | How to resolve `value` to a person |
 | `editable` | `boolean` | `true` | Enable click-to-pick mode |
 | `showName` | `boolean` | `false` | Show person name next to avatar |
-| `onSelect` | `(person) => void` | — | Selection handler |
+| `title` | `string?` | — | Field label used in placeholder ("Add {title}") and clear option ("No {title}") |
+| `onSelect` | `(person \| null) => void` | — | Selection handler; passes `null` when "No {title}" is chosen |
 | `className` | `string?` | — | Additional styling |
+
+When `title` is provided and the field is editable, the dropdown prepends a "No {title}" option (with `CircleUser` icon) that clears the selection.
 
 **Used in:** DecisionsTable (owner/sponsor cell), CommitmentsTable (owner cell), DecisionDetail (sidebar: requested by, sponsor, owner), InitiativesList (owner cell), InitiativeDetail (project table), ProjectsList (owner cell), Strategy (header, author)
 
