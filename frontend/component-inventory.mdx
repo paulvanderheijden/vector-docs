@@ -416,10 +416,11 @@ TipTap-based rich text editor with markdown serialization. BubbleMenu toolbar: b
 
 `src/components/ReadOnlyBanner.tsx`
 
-Amber info banner with Lock icon. Used to indicate that a page or section is read-only (e.g. a closed session).
+Full-width banner with Lock icon. Used to indicate that a page is read-only. Default styling is amber (`bg-amber-50 text-amber-800`); override via `className` for variants (e.g. gray for cancelled sessions).
 
 ```tsx
 <ReadOnlyBanner>This session is closed. Re-open it to make changes.</ReadOnlyBanner>
+<ReadOnlyBanner className="bg-muted text-muted-foreground">This session was cancelled.</ReadOnlyBanner>
 ```
 
 | Prop | Type | Default | Description |
@@ -427,7 +428,7 @@ Amber info banner with Lock icon. Used to indicate that a page or section is rea
 | `children` | `ReactNode` | required | Banner message content |
 | `className` | `string?` | — | Additional styling |
 
-**Used in:** SessionDetail (shown when session status is Closed)
+**Used in:** SessionDetail (shown when session status is Closed or Cancelled)
 
 ---
 
