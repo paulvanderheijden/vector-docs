@@ -32,7 +32,7 @@ The landing page. Shows all decisions with status "Proposed" from circles the cu
 
 Personal view of the user's assigned work. Two tabs:
 
-- **Decisions** — all decisions where the user is the owner
+- **Decisions** — all decisions where the user is the owner, sponsor, or requestor. This is the only place Draft decisions appear (they are excluded from circle views).
 - **Commitments** — all commitments where the user is the owner
 
 Tab counts shown in the tab labels.
@@ -47,9 +47,9 @@ Table of all circles. Columns: circle name, membership status (Joined badge or J
 
 ### Circle Decisions
 
-The primary decision workspace for a circle. Shows all decisions belonging to this circle with filter tabs to narrow the view.
+The primary decision workspace for a circle. Shows all non-Draft decisions belonging to this circle with filter tabs to narrow the view. Draft decisions are private to the requestor and only appear on My Items.
 
-- **Decision filter tabs** — "All decisions" (everything) / "Open" (excludes Taken and Superseded)
+- **Decision filter tabs** — "Open" (Requested, Scheduled) / "Closed" (Taken)
 - **Session links** — each decision shows its linked session number and date as a clickable badge
 - **Columns** — ref, statement, session, owner (PersonField avatar), status (StatusField), age
 - **[New Decision] button** in header
