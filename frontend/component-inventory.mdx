@@ -35,6 +35,7 @@ Click-to-edit text field with full styling control via Tailwind utility props. R
 | `multiline` | `boolean` | `false` | Use textarea instead of input |
 | `maxChars` | `number?` | — | Character limit |
 | `as` | `"div"` / `"h1"` / `"p"` | `"div"` | Display-mode HTML tag |
+| `editable` | `boolean` | `true` | When `false`, click-to-edit is disabled and cursor-text is removed |
 | `className` | `string?` | — | Additional styling |
 
 **Used in:** DecisionDetail (title), CommitmentReview (title), InitiativeDetail (title, summary), ProjectDetail (title, description), SessionDetail (title)
@@ -402,12 +403,31 @@ Inline property picker. Clickable trigger opens a popover with options. Each opt
 
 TipTap-based rich text editor with markdown serialization. BubbleMenu toolbar: bold, italic, strike, code, link, headings (H2/H3), lists, blockquote. Slash commands for block insertion.
 
-| Prop | Type | Description |
-|---|---|---|
-| `content` | `string` | Initial markdown content |
-| `onChange` | `(markdown) => void` | Change handler |
+| Prop | Type | Default | Description |
+|---|---|---|---|
+| `content` | `string` | required | Initial markdown content |
+| `onChange` | `(markdown) => void` | — | Change handler |
+| `placeholder` | `string?` | — | Muted placeholder text shown when editor is empty |
+| `editable` | `boolean` | `true` | When `false`, editor is non-editable and BubbleMenu is hidden |
 
-**Used in:** Strategy (main content), DecisionDetail (rationale, discussion), InitiativeDetail (description), SessionDetail (meeting notes)
+**Used in:** Strategy (main content), DecisionDetail (description, discussion, summary), InitiativeDetail (description), SessionDetail (meeting notes)
+
+### ReadOnlyBanner
+
+`src/components/ReadOnlyBanner.tsx`
+
+Amber info banner with Lock icon. Used to indicate that a page or section is read-only (e.g. a closed session).
+
+```tsx
+<ReadOnlyBanner>This session is closed. Re-open it to make changes.</ReadOnlyBanner>
+```
+
+| Prop | Type | Default | Description |
+|---|---|---|---|
+| `children` | `ReactNode` | required | Banner message content |
+| `className` | `string?` | — | Additional styling |
+
+**Used in:** SessionDetail (shown when session status is Closed)
 
 ---
 

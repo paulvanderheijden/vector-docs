@@ -116,10 +116,11 @@ A session cannot be marked as completed when its date is in the future.
 Meeting workspace designed to be open during a session:
 
 - **Editable title** — TextField styled as heading
-- **Properties row** — session date (DateField), status (Open/Closed via PropertySelect), chair (PersonField)
+- **Properties row** — session date (DateField), status (Open/Closed via StatusField), chair (PersonField)
 - **Decisions section** — reorderable table (drag-and-drop), compact mode with combined status+owner column. Clicking a decision opens a 480px drawer on the right with rationale, implications, and discussion
 - **Commitments section** — compact table with combined decision ref + owner column
 - **Meeting notes** — TipTap markdown editor
+- **Closed lock** — when status is "Closed", a `ReadOnlyBanner` appears and all fields (title, date, chair, notes) become read-only. "Add Decision" / "Add Commitment" buttons and decision drawer are disabled. The status field stays editable so the user can re-open the session.
 
 ### Initiatives List
 

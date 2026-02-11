@@ -161,7 +161,7 @@ DecisionDetail uses an always-open sidebar (no toggle). Other detail pages (Comm
 
 Two components handle inline editing:
 
-- **TextField** — click-to-edit text field with full styling control via Tailwind utility props (`size`, `weight`, `color`, `leading`, `tracking`). Used for page titles (`as="h1"`, heading styles), descriptions, and summaries. Supports `multiline` for textarea mode. Renders static text that becomes an input on click — Enter/blur saves, Escape cancels.
+- **TextField** — click-to-edit text field with full styling control via Tailwind utility props (`size`, `weight`, `color`, `leading`, `tracking`). Used for page titles (`as="h1"`, heading styles), descriptions, and summaries. Supports `multiline` for textarea mode. Renders static text that becomes an input on click — Enter/blur saves, Escape cancels. Supports `editable` prop (default `true`) — when `false`, click-to-edit is disabled.
 - **PropertySelect** — click-to-open popover with options list. Used for health, target, visibility. Each option can have an icon. Shows checkmark on selected value. (Status fields now use the dedicated `StatusField` component.)
 
 ### Friendly dates
