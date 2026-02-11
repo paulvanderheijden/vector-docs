@@ -51,7 +51,7 @@ The primary decision workspace for a circle. Shows all decisions belonging to th
 
 - **Decision filter tabs** — "All decisions" (everything) / "Open" (excludes Taken and Superseded)
 - **Session links** — each decision shows its linked session number and date as a clickable badge
-- **Columns** — ref, statement, session, owner (PersonField avatar), status badge, age
+- **Columns** — ref, statement, session, owner (PersonField avatar), status (StatusField), age
 - **[New Decision] button** in header
 - Each decision links to its full detail view
 
@@ -59,7 +59,7 @@ The primary decision workspace for a circle. Shows all decisions belonging to th
 
 The commitment tracking view for a circle. Shows all commitments belonging to this circle.
 
-- **Columns** — ref, outcome, decision ref, owner (PersonField avatar), due date, status badge
+- **Columns** — ref, outcome, decision ref, owner (PersonField avatar), due date, status (StatusField)
 - No filter tabs (yet) — shows all commitments
 - Each commitment links to its review view
 
@@ -68,7 +68,7 @@ The commitment tracking view for a circle. Shows all commitments belonging to th
 Single-page view for a single decision with an always-open right sidebar (288px). No tabs — all content on one scrollable page.
 
 **Main content (top to bottom):**
-1. **PageTitle** — editable decision statement
+1. **TextField** — editable decision statement
 2. **Rationale** — MarkdownEditor for the decision rationale
 3. **Discussion** — MarkdownEditor for session discussion notes
 4. **Summary** — read-only text showing the decision statement
@@ -88,7 +88,7 @@ Single-page view for a single decision with an always-open right sidebar (288px)
 
 Detail view for a single commitment. Two tabs:
 
-- **Overview** — alert banner for rolled/at-risk status, editable outcome (InlineText), properties row (status badge, due date, owner, circle), linked decision card
+- **Overview** — alert banner for rolled/at-risk status, editable outcome (TextField), properties row (StatusField, due date, owner, circle), linked decision card
 - **Activity** — changelog feed
 
 Right sidebar mirrors properties. Header includes a "Re-commit?" button when status is Rolled or At risk.
@@ -115,7 +115,8 @@ A session cannot be marked as completed when its date is in the future.
 
 Meeting workspace designed to be open during a session:
 
-- **Editable title** — plain input styled as heading
+- **Editable title** — TextField styled as heading
+- **Properties row** — session date (DateField), status (Open/Closed via PropertySelect), chair (PersonField)
 - **Decisions section** — reorderable table (drag-and-drop), compact mode with combined status+owner column. Clicking a decision opens a 480px drawer on the right with rationale, implications, and discussion
 - **Commitments section** — compact table with combined decision ref + owner column
 - **Meeting notes** — TipTap markdown editor
@@ -128,7 +129,7 @@ Filterable list of initiatives. Status tabs (Active / Planned / Completed) at th
 
 Strategic initiative overview. Three tabs:
 
-- **Overview** — clickable icon with picker popover (8 icon/color combos), editable title and summary (InlineText), inline properties (status, health, owner, target via PropertySelect), description (MarkdownEditor)
+- **Overview** — clickable icon with picker popover (8 icon/color combos), editable title and summary (TextField), inline properties (status via StatusField, health/target via PropertySelect, owner via PersonField), description (MarkdownEditor)
 - **Updates** — placeholder (coming soon)
 - **Projects** — table of linked projects with owner, health, teams, decision/commitment counts
 
@@ -142,7 +143,7 @@ Projects grouped by parent initiative. Group rows show initiative title, project
 
 Execution detail for a project. Three tabs:
 
-- **Overview** — alert banner if >2 rolled commitments, editable title and description (InlineText), inline properties (health, visibility, owner via PropertySelect, parent initiative link), teams (TeamChips)
+- **Overview** — alert banner if >2 rolled commitments, editable title and description (TextField), inline properties (health, visibility, owner via PropertySelect, parent initiative link), teams (TeamChips)
 - **Decisions** — lightweight decision list (DecisionList)
 - **Commitments** — lightweight commitment list (CommitmentList)
 

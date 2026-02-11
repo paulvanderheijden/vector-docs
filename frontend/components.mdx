@@ -45,7 +45,7 @@ Generic data table built on TanStack React Table. Used directly for custom table
 
 Wraps `DataTable` for decision lists. Provides decision-specific columns with configurable visibility.
 
-**Columns:** ref (e.g. DEC-1), statement (link or click handler), circle, session (link badge), owner (PersonSelector avatar), status (Badge), age (colored by threshold).
+**Columns:** ref (e.g. DEC-1), statement (link or click handler), circle, session (link badge), owner (PersonField avatar), status (StatusField icon+text), age (colored by threshold).
 
 | Prop | Type | Default | Description |
 |---|---|---|---|
@@ -59,7 +59,7 @@ Wraps `DataTable` for decision lists. Provides decision-specific columns with co
 | `showSelect` | `boolean` | — | Show row selection checkboxes |
 | `showDragHandle` | `boolean` | — | Show drag handle |
 | `showHeader` | `boolean` | — | Show table header |
-| `combinedStatusOwner` | `boolean` | `false` | Merge status Badge + owner avatar into a single right-aligned column (hides individual status, owner, and age columns) |
+| `combinedStatusOwner` | `boolean` | `false` | Merge StatusField + owner avatar into a single right-aligned column (hides individual status, owner, and age columns) |
 
 ### CommitmentsTable
 
@@ -67,7 +67,7 @@ Wraps `DataTable` for decision lists. Provides decision-specific columns with co
 
 Wraps `DataTable` for commitment lists. Same pattern as DecisionsTable.
 
-**Columns:** ref (e.g. COM-1), outcome (link), decision ref, circle, owner (PersonSelector avatar), due date, status (Badge).
+**Columns:** ref (e.g. COM-1), outcome (link), decision ref, circle, owner (PersonField avatar), due date, status (StatusField icon+text).
 
 | Prop | Type | Default | Description |
 |---|---|---|---|
@@ -159,11 +159,10 @@ DecisionDetail uses an always-open sidebar (no toggle). Other detail pages (Comm
 
 ### Inline editing
 
-Three components handle inline editing:
+Two components handle inline editing:
 
-- **PageTitle** — page-level heading that supports both static (`<PageTitle>Strategy</PageTitle>`) and editable (`<PageTitle editable value={...} onChange={...} />`) modes. Wraps InlineText internally. Used for the main h1 on every detail page and Strategy.
-- **InlineText** — lower-level click-to-edit component. Renders static text that becomes an input on click. Supports `as="h1"`, `as="p"`, etc. Used directly for summaries and descriptions (not for page titles — use PageTitle instead).
-- **PropertySelect** — click-to-open popover with options list. Used for status, health, owner, target, visibility. Each option can have an icon. Shows checkmark on selected value.
+- **TextField** — click-to-edit text field with full styling control via Tailwind utility props (`size`, `weight`, `color`, `leading`, `tracking`). Used for page titles (`as="h1"`, heading styles), descriptions, and summaries. Supports `multiline` for textarea mode. Renders static text that becomes an input on click — Enter/blur saves, Escape cancels.
+- **PropertySelect** — click-to-open popover with options list. Used for health, target, visibility. Each option can have an icon. Shows checkmark on selected value. (Status fields now use the dedicated `StatusField` component.)
 
 ### Friendly dates
 

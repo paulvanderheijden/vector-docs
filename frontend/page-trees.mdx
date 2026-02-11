@@ -79,7 +79,7 @@ PageHeader (via usePageHeader)
 
 Page body
 ├── Main column (max-w-800)
-│   ├── PageTitle "Strategy" (static)
+│   ├── h1 "Strategy" (static heading)
 │   └── MarkdownEditor (strategy content)
 └── TOC sidebar (sticky right nav, lg+ only)
     └── Heading links (extracted from editor DOM via useTableOfContents)
@@ -157,7 +157,7 @@ PageHeader (via usePageHeader)
         └── Breadcrumb: "Circle > Decisions > DEC-N" + statement
 
 Page body (max-w-800, mr-72 for sidebar)
-├── PageTitle (editable, decision statement)
+├── TextField (editable, decision statement)
 ├── "Rationale" → MarkdownEditor
 ├── "Discussion" → MarkdownEditor
 ├── "Summary" → read-only statement text
@@ -196,20 +196,20 @@ PageHeader (via usePageHeader)
 Page body (conditional on active tab)
 ├── Overview tab (max-w-800)
 │   ├── Alert banner (rolled = red, at-risk = amber)
-│   ├── PageTitle (editable, commitment outcome)
-│   ├── PropertiesRow (title="Properties") → Badge (status), due date, owner, circle
-│   └── "Linked Decision" → Link card with Badge + status
+│   ├── TextField (editable, commitment outcome)
+│   ├── PropertiesRow (title="Properties") → StatusField (commitment), due date, owner, circle
+│   └── "Linked Decision" → Link card with StatusField (decision)
 └── Activity tab (max-w-800)
     └── ChangeLog
 
 DetailSidebar (fixed right, 288px, toggle)
 ├── SidebarSection "Properties"
 │   └── PropertiesRow (stacked)
-│       ├── PropertiesRow.Item "Status" → Badge
+│       ├── PropertiesRow.Item "Status" → StatusField (commitment)
 │       ├── PropertiesRow.Item "Due" → text
 │       ├── PropertiesRow.Item "Owner" → text
 │       └── PropertiesRow.Item "Circle" → Link
-└── SidebarSection "Linked Decision" → Link + Badge
+└── SidebarSection "Linked Decision" → Link + StatusField (decision)
 ```
 
 ---
@@ -242,7 +242,11 @@ PageHeader (via usePageHeader)
     └── PageHeaderGroup: circle icon + "Circle > Session N" + friendly date
 
 Page body (max-w-800)
-├── Input (editable session title, styled as h1)
+├── TextField (editable session title, as h1)
+├── PropertiesRow (title="Properties")
+│   ├── PropertiesRow.Item → DateField (session date)
+│   ├── PropertiesRow.Item → PropertySelect (Open / Closed)
+│   └── PropertiesRow.Item → PersonField (chair, editable, showName)
 ├── "Decisions" section
 │   ├── Section header + [Add Decision] button
 │   └── DecisionsTable
@@ -260,7 +264,7 @@ Page body (max-w-800)
 Decision drawer (fixed right, 480px, toggle on row click)
 ├── Drawer header: ref + statement + [open full] Link + [close] button
 └── Drawer content
-    ├── Properties row: Badge (status), age, owner, requested by
+    ├── Properties row: StatusField (decision), age, owner, requested by
     ├── "Rationale" → text
     ├── "Implications" → bullet list
     └── "Discussion" → text
@@ -305,10 +309,10 @@ PageHeader (via usePageHeader)
 Page body (conditional on active tab)
 ├── Overview tab (max-w-800)
 │   ├── Popover → icon picker grid (8 icon/color combos)
-│   ├── PageTitle (editable, initiative title)
-│   ├── InlineText (summary, as p)
+│   ├── TextField (editable, initiative title)
+│   ├── TextField (summary, as p)
 │   ├── PropertiesRow (title="Properties")
-│   │   ├── PropertiesRow.Item → PropertySelect (status)
+│   │   ├── PropertiesRow.Item → StatusField (initiative, editable)
 │   │   ├── PropertiesRow.Item → PropertySelect (health)
 │   │   ├── PropertiesRow.Item → PropertySelect (owner)
 │   │   └── PropertiesRow.Item → PropertySelect (target quarter)
@@ -321,7 +325,7 @@ Page body (conditional on active tab)
 DetailSidebar (fixed right, 288px, toggle)
 ├── SidebarSection "Properties"
 │   └── PropertiesRow (stacked)
-│       ├── PropertiesRow.Item "Status" → PropertySelect
+│       ├── PropertiesRow.Item "Status" → StatusField (initiative, editable)
 │       ├── PropertiesRow.Item "Health" → PropertySelect
 │       ├── PropertiesRow.Item "Owner" → PropertySelect
 │       └── PropertiesRow.Item "Target" → PropertySelect
@@ -368,8 +372,8 @@ PageHeader (via usePageHeader)
 Page body (conditional on active tab)
 ├── Overview tab (max-w-800)
 │   ├── Alert banner (if >2 rolled commitments)
-│   ├── PageTitle (editable, project title)
-│   ├── InlineText (description, as p)
+│   ├── TextField (editable, project title)
+│   ├── TextField (description, as p)
 │   ├── PropertiesRow (title="Properties")
 │   │   ├── PropertiesRow.Item → PropertySelect (health)
 │   │   ├── PropertiesRow.Item → PropertySelect (visibility)

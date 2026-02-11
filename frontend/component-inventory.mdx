@@ -5,32 +5,39 @@ description: "Canonical list of every shared component, its purpose, props, and 
 
 ## Layout Components
 
-### PageTitle
+### TextField
 
-`src/components/PageTitle.tsx`
+`src/components/TextField.tsx`
 
-Page-level heading with consistent typography. Supports both static and editable modes. Wraps `InlineText` internally when editable.
+Click-to-edit text field with full styling control via Tailwind utility props. Replaces the former `PageTitle` and `InlineText` components. Renders static text that becomes an `<input>` (or `<textarea>` when `multiline`) on click. Enter/blur saves, Escape cancels.
 
-**Static usage:**
+**Page title usage:**
 ```tsx
-<PageTitle>Strategy</PageTitle>
+<TextField value={title} onChange={setTitle} size="text-[1.5rem]" weight="font-semibold" leading="leading-[2rem]" tracking="tracking-[-0.16px]" as="h1" />
 ```
 
-**Editable usage:**
+**Description/summary usage:**
 ```tsx
-<PageTitle editable value={title} onChange={setTitle} />
+<TextField value={desc} onChange={setDesc} size="text-[0.9375rem]" color="text-muted-foreground" leading="leading-relaxed" placeholder="Add a description..." as="p" />
 ```
 
 | Prop | Type | Default | Description |
 |---|---|---|---|
-| `children` | `ReactNode` | — | Static title content (when not editable) |
-| `editable` | `boolean` | `false` | Enable click-to-edit mode |
-| `value` | `string` | — | Current value (editable mode) |
-| `onChange` | `(value) => void` | — | Save handler (editable mode) |
-| `placeholder` | `string?` | — | Placeholder when empty (editable mode) |
+| `value` | `string` | required | Current value |
+| `onChange` | `(value) => void` | required | Save handler |
+| `placeholder` | `string?` | `"Empty"` | Placeholder when empty |
+| `placeholderColor` | `string?` | `"text-muted-foreground/50"` | Tailwind class for placeholder color |
+| `color` | `string?` | inherits | Tailwind text color class |
+| `size` | `string?` | `"text-sm"` | Tailwind text-size class |
+| `weight` | `string?` | `"font-normal"` | Tailwind font-weight class |
+| `leading` | `string?` | — | Tailwind leading class |
+| `tracking` | `string?` | — | Tailwind tracking class |
+| `multiline` | `boolean` | `false` | Use textarea instead of input |
+| `maxChars` | `number?` | — | Character limit |
+| `as` | `"div"` / `"h1"` / `"p"` | `"div"` | Display-mode HTML tag |
 | `className` | `string?` | — | Additional styling |
 
-**Used in:** Strategy (static), DecisionDetail, CommitmentReview, InitiativeDetail, ProjectDetail (all editable)
+**Used in:** DecisionDetail (title), CommitmentReview (title), InitiativeDetail (title, summary), ProjectDetail (title, description), SessionDetail (title)
 
 ### PageHeader / PageHeaderRow / PageHeaderGroup
 
@@ -203,7 +210,7 @@ Reusable commitments table wrapping `DataTable`. Commitment-specific columns: re
 
 `src/components/DecisionList.tsx`
 
-Lightweight decision list for project context. Compact row format: status badge (fixed width), ref, title, circle name, age. Uses `ProjectDecision` type (from projects-store), not the main `Decision` type.
+Lightweight decision list for project context. Compact row format: StatusField (icon + text), ref, title, circle name, age. Uses `ProjectDecision` type (from projects-store), not the main `Decision` type.
 
 | Prop | Type | Description |
 |---|---|---|
@@ -292,7 +299,7 @@ Contextual date display with tooltip. Shows relative text when ≤7 days ago ("t
 | `prefix` | `string?` | — | Text prefix (e.g. "Updated") |
 | `className` | `string?` | — | Additional styling |
 
-**Used in:** Strategy (header, last updated date)
+**Used in:** Strategy (header, last updated date), SessionDetail (session date)
 
 ### PersonField
 
@@ -312,23 +319,44 @@ Avatar-based person display with nullable support. Read-only shows avatar + opti
 
 When `title` is provided and the field is editable, the dropdown prepends a "No {title}" option that clears the selection.
 
-**Used in:** DecisionsTable (owner/sponsor cell), CommitmentsTable (owner cell), DecisionDetail (sidebar: requested by, sponsor, owner), InitiativesList (owner cell), InitiativeDetail (project table), ProjectsList (owner cell), Strategy (header, author)
+**Used in:** DecisionsTable (owner/sponsor cell), CommitmentsTable (owner cell), DecisionDetail (sidebar: requested by, sponsor, owner), InitiativesList (owner cell), InitiativeDetail (project table), ProjectsList (owner cell), SessionDetail (chair), Strategy (header, author)
 
 ### StatusField
 
 `src/components/StatusField.tsx`
 
-Status badge display. Read-only renders a colored `Badge` using `statusVariant`. Editable renders a clickable badge that opens a popover with status options. Works with both `DecisionStatus` and `CommitmentStatus`.
+Config-driven status display with icon + text. Supports three entity types (decision, commitment, initiative) via a `type` prop — no `options` prop needed, options are derived from an internal config map. Read-only renders a `<span>` with colored icon + muted label. Editable renders a `<button>` trigger (matching PersonField style: `rounded px-1.5 py-0.5 hover:bg-muted`) that opens a popover dropdown with all status options for that type.
+
+Also exports a `getStatusConfig(type, value)` helper for external icon/color lookup, and a `StatusType` union type.
 
 | Prop | Type | Default | Description |
 |---|---|---|---|
-| `value` | `DecisionStatus \| CommitmentStatus` | required | Current status |
+| `type` | `StatusType` | required | Entity type: `"decision"`, `"commitment"`, or `"initiative"` |
+| `value` | `string` | required | Current status value (e.g. `"Draft"`, `"Active"`, `"active"`) |
 | `editable` | `boolean` | `false` | Enable click-to-pick mode |
-| `options` | `{ value, label }[]` | — | Available status options (required when editable) |
-| `onSelect` | `(value) => void` | — | Selection handler |
+| `onSelect` | `(value: string) => void` | — | Selection handler (returns the config map key) |
 | `className` | `string?` | — | Additional styling |
 
-**Used in:** DecisionsTable (status cell, combined statusOwner cell), CommitmentsTable (status cell), DecisionDetail (sidebar: status)
+**Config map:**
+
+| Type | Status | Icon | Color |
+|---|---|---|---|
+| decision | Draft | `Circle` | `text-muted-foreground` |
+| decision | Requested | `CircleDot` | `text-amber-600` |
+| decision | Scheduled | `CircleDashed` | `text-blue-600` |
+| decision | Taken | `CircleCheck` | `text-green-600` |
+| decision | Rolled | `RotateCcw` | `text-red-600` |
+| commitment | Active | `CircleDot` | `text-blue-600` |
+| commitment | At risk | `CircleAlert` | `text-amber-600` |
+| commitment | Delivered | `CircleCheck` | `text-green-600` |
+| commitment | Rolled | `RotateCcw` | `text-red-600` |
+| initiative | active | `CircleDot` | `text-blue-600` |
+| initiative | planned | `Circle` | `text-muted-foreground` |
+| initiative | completed | `CircleCheck` | `text-green-600` |
+
+Lowercase aliases (`draft`, `requested`, `atRisk`, etc.) are supported for `ProjectDecisionStatus` / `ProjectCommitmentStatus` values.
+
+**Used in:** DecisionsTable (status cell, combined statusOwner cell), CommitmentsTable (status cell), DecisionDetail (sidebar: status), AgendaCard (commitment + decision statuses), SessionDetail (drawer decision status), CommitmentReview (inline + sidebar + linked decision), DecisionList (project decision status), InitiativeDetail (inline + sidebar status)
 
 ### SessionField
 
@@ -349,21 +377,9 @@ Session pill display: `EntityIcon` session icon + `#number` + relative date. Ren
 
 ## Interactive Components
 
-### InlineText
+### TextField
 
-`src/components/InlineText.tsx`
-
-Click-to-edit text field. Shows static text that becomes an input on click. Enter saves, Escape cancels.
-
-| Prop | Type | Default | Description |
-|---|---|---|---|
-| `value` | `string` | required | Current value |
-| `onChange` | `(value) => void` | required | Save handler |
-| `className` | `string?` | — | Styling |
-| `placeholder` | `string?` | `"Empty"` | Placeholder when empty |
-| `as` | `"div"` / `"h1"` / `"p"` | `"div"` | HTML element to render |
-
-**Used in:** PageTitle (internally, for editable mode), InitiativeDetail (summary), ProjectDetail (description)
+See [Layout Components > TextField](#textfield) above.
 
 ### PropertySelect
 
@@ -378,7 +394,7 @@ Inline property picker. Clickable trigger opens a popover with options. Each opt
 | `onSelect` | `(value) => void` | Selection handler |
 | `triggerClassName` | `string?` | Custom trigger styling |
 
-**Used in:** InitiativeDetail (status, health, owner, target), ProjectDetail (health, visibility, owner)
+**Used in:** InitiativeDetail (health, target), ProjectDetail (health, visibility, owner), SessionDetail (Open/Closed status)
 
 ### MarkdownEditor
 
@@ -402,7 +418,7 @@ These are standard shadcn/ui components. Not documented individually here, but t
 | Primitive | Notable usage |
 |---|---|
 | `DataTable` | Base for DecisionsTable, CommitmentsTable, and direct use in CirclesList, InitiativesList, ProjectsList, SessionsList, InitiativeDetail |
-| `Badge` | Status badges throughout the app |
+| `Badge` | Team chips, session badges, misc labels (status badges replaced by `StatusField`) |
 | `Avatar` | Person display throughout the app |
 | `Button` | Actions, filters, toggles |
 | `Checkbox` | DecisionDetail (notify requestor) |
