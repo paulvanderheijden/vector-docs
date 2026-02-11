@@ -162,12 +162,12 @@ PageHeader (via usePageHeader)
 Page body (conditional on active tab)
 ├── Overview tab (max-w-800)
 │   ├── PageTitle (editable, decision statement)
-│   ├── Properties row
-│   │   ├── PropertySelect (status, with Badge icons)
-│   │   ├── Age indicator (colored)
-│   │   ├── PropertySelect (owner, with Avatar icons)
-│   │   ├── "Requested by" label
-│   │   └── Circle label
+│   ├── PropertiesRow (title="Properties")
+│   │   ├── PropertiesRow.Item → PropertySelect (status)
+│   │   ├── PropertiesRow.Item → Age indicator (colored)
+│   │   ├── PropertiesRow.Item → PropertySelect (owner)
+│   │   ├── PropertiesRow.Item → "Requested by" label
+│   │   └── PropertiesRow.Item → Circle label
 │   ├── "Rationale" → MarkdownEditor
 │   ├── "Implications" → bullet list
 │   └── "Discussion" → MarkdownEditor
@@ -178,11 +178,12 @@ Page body (conditional on active tab)
 
 DetailSidebar (fixed right, 288px, toggle)
 ├── SidebarSection "Properties"
-│   ├── PropertyRow "Status" → Badge
-│   ├── PropertyRow "Age" → colored text
-│   ├── PropertyRow "Owner" → PropertySelect
-│   ├── PropertyRow "Requested" → text
-│   └── PropertyRow "Circle" → Link
+│   └── PropertiesRow (stacked)
+│       ├── PropertiesRow.Item "Status" → Badge
+│       ├── PropertiesRow.Item "Age" → colored text
+│       ├── PropertiesRow.Item "Owner" → PropertySelect
+│       ├── PropertiesRow.Item "Requested" → text
+│       └── PropertiesRow.Item "Circle" → Link
 └── SidebarSection "Summary" → text
 ```
 
@@ -207,17 +208,18 @@ Page body (conditional on active tab)
 ├── Overview tab (max-w-800)
 │   ├── Alert banner (rolled = red, at-risk = amber)
 │   ├── PageTitle (editable, commitment outcome)
-│   ├── Properties row: Badge (status), due date, owner, circle
+│   ├── PropertiesRow (title="Properties") → Badge (status), due date, owner, circle
 │   └── "Linked Decision" → Link card with Badge + status
 └── Activity tab (max-w-800)
     └── ChangeLog
 
 DetailSidebar (fixed right, 288px, toggle)
 ├── SidebarSection "Properties"
-│   ├── PropertyRow "Status" → Badge
-│   ├── PropertyRow "Due" → text
-│   ├── PropertyRow "Owner" → text
-│   └── PropertyRow "Circle" → Link
+│   └── PropertiesRow (stacked)
+│       ├── PropertiesRow.Item "Status" → Badge
+│       ├── PropertiesRow.Item "Due" → text
+│       ├── PropertiesRow.Item "Owner" → text
+│       └── PropertiesRow.Item "Circle" → Link
 └── SidebarSection "Linked Decision" → Link + Badge
 ```
 
@@ -316,11 +318,11 @@ Page body (conditional on active tab)
 │   ├── Popover → icon picker grid (8 icon/color combos)
 │   ├── PageTitle (editable, initiative title)
 │   ├── InlineText (summary, as p)
-│   ├── Properties row
-│   │   ├── PropertySelect (status)
-│   │   ├── PropertySelect (health, with colored icons)
-│   │   ├── PropertySelect (owner, with Avatar icons)
-│   │   └── PropertySelect (target quarter)
+│   ├── PropertiesRow (title="Properties")
+│   │   ├── PropertiesRow.Item → PropertySelect (status)
+│   │   ├── PropertiesRow.Item → PropertySelect (health)
+│   │   ├── PropertiesRow.Item → PropertySelect (owner)
+│   │   └── PropertiesRow.Item → PropertySelect (target quarter)
 │   └── "Description" → MarkdownEditor
 ├── Updates tab → placeholder
 └── Projects tab
@@ -329,10 +331,11 @@ Page body (conditional on active tab)
 
 DetailSidebar (fixed right, 288px, toggle)
 ├── SidebarSection "Properties"
-│   ├── PropertyRow "Status" → PropertySelect
-│   ├── PropertyRow "Health" → PropertySelect
-│   ├── PropertyRow "Owner" → PropertySelect
-│   └── PropertyRow "Target" → PropertySelect
+│   └── PropertiesRow (stacked)
+│       ├── PropertiesRow.Item "Status" → PropertySelect
+│       ├── PropertiesRow.Item "Health" → PropertySelect
+│       ├── PropertiesRow.Item "Owner" → PropertySelect
+│       └── PropertiesRow.Item "Target" → PropertySelect
 └── SidebarSection "Summary" → text
 ```
 
@@ -378,11 +381,11 @@ Page body (conditional on active tab)
 │   ├── Alert banner (if >2 rolled commitments)
 │   ├── PageTitle (editable, project title)
 │   ├── InlineText (description, as p)
-│   ├── Properties row
-│   │   ├── PropertySelect (health, with colored icons)
-│   │   ├── PropertySelect (visibility: public/private)
-│   │   ├── PropertySelect (owner, with Avatar icons)
-│   │   └── Link to parent initiative
+│   ├── PropertiesRow (title="Properties")
+│   │   ├── PropertiesRow.Item → PropertySelect (health)
+│   │   ├── PropertiesRow.Item → PropertySelect (visibility)
+│   │   ├── PropertiesRow.Item → PropertySelect (owner)
+│   │   └── PropertiesRow.Item → Link to parent initiative
 │   └── "Teams" → TeamChips
 ├── Decisions tab
 │   └── DecisionList
@@ -391,14 +394,16 @@ Page body (conditional on active tab)
 
 DetailSidebar (fixed right, 288px, toggle)
 ├── SidebarSection "Properties"
-│   ├── PropertyRow "Health" → HealthIndicator
-│   ├── PropertyRow "Visibility" → PropertySelect
-│   ├── PropertyRow "Owner" → PropertySelect
-│   └── PropertyRow "Initiative" → Link
+│   └── PropertiesRow (stacked)
+│       ├── PropertiesRow.Item "Health" → HealthIndicator
+│       ├── PropertiesRow.Item "Visibility" → PropertySelect
+│       ├── PropertiesRow.Item "Owner" → PropertySelect
+│       └── PropertiesRow.Item "Initiative" → Link
 ├── SidebarSection "Signals"
-│   ├── PropertyRow "Open" → commitment count
-│   ├── PropertyRow "Rolled" → rolled count
-│   └── PropertyRow "Dec. (14d)" → recent decision count
+│   └── PropertiesRow (stacked)
+│       ├── PropertiesRow.Item "Open" → commitment count
+│       ├── PropertiesRow.Item "Rolled" → rolled count
+│       └── PropertiesRow.Item "Dec. (14d)" → recent decision count
 ├── SidebarSection "Teams" → TeamChips
 └── SidebarSection "People" (private projects only)
     ├── Owner row: Avatar + name + "Owner" Badge

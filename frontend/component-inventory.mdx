@@ -44,18 +44,64 @@ Consistent page header layout injected into the App shell's sticky header area v
 
 **Used in:** every page
 
-### DetailSidebar (SidebarSection + PropertyRow)
+### DetailSidebar (SidebarSection)
 
 `src/components/DetailSidebar.tsx`
 
-Right-side detail panel for entity detail pages. Fixed-position aside, 288px wide, slides in/out with transition. `SidebarSection` is a collapsible section with title. `PropertyRow` renders a label + value pair in a compact 26px row.
+Right-side detail panel for entity detail pages. Fixed-position aside, 288px wide, slides in/out with transition. `SidebarSection` is a collapsible section with title. Property rows inside use `PropertiesRow` with `stacked` layout.
 
 | Component | Props |
 |---|---|
 | `SidebarSection` | `title: string`, `defaultOpen?: boolean` (default true), `children: ReactNode` |
-| `PropertyRow` | `label: string`, `children: ReactNode` |
 
 **Used in:** DecisionDetail, CommitmentReview, InitiativeDetail, ProjectDetail
+
+### PropertiesRow (+ PropertiesRow.Item)
+
+`src/components/PropertiesRow.tsx`
+
+Renders a group of field components in either inline (horizontal) or stacked (vertical) layout. Provides an `editable` flag via React context that child fields can read with the `usePropertiesEditable()` hook.
+
+**Inline usage (detail page body):**
+```tsx
+<PropertiesRow title="Properties">
+  <PropertiesRow.Item><StatusField value={status} /></PropertiesRow.Item>
+  <PropertiesRow.Item><PersonField value={owner} /></PropertiesRow.Item>
+</PropertiesRow>
+```
+
+**Stacked usage (sidebar):**
+```tsx
+<PropertiesRow stacked>
+  <PropertiesRow.Item label="Status"><StatusField value={status} /></PropertiesRow.Item>
+  <PropertiesRow.Item label="Owner"><PersonField value={owner} /></PropertiesRow.Item>
+</PropertiesRow>
+```
+
+**Read-only usage:**
+```tsx
+<PropertiesRow title="Properties" editable={false}>
+  ...fields inherit read-only via usePropertiesEditable()
+</PropertiesRow>
+```
+
+| Prop | Type | Default | Description |
+|---|---|---|---|
+| `title` | `string?` | — | Label shown at start of row (inline mode only) |
+| `stacked` | `boolean` | `false` | Vertical layout with labeled rows (for sidebars) |
+| `editable` | `boolean` | `true` | Propagated via context to child fields |
+| `className` | `string?` | — | Additional styling |
+
+`PropertiesRow.Item` props:
+
+| Prop | Type | Description |
+|---|---|---|
+| `label` | `string?` | Row label (only rendered in stacked mode) |
+| `children` | `ReactNode` | Field content |
+
+Exports `usePropertiesEditable()` hook for field components to read the inherited editable state.
+
+**Used in:** DecisionDetail, CommitmentReview, InitiativeDetail, ProjectDetail (both inline and stacked)
 
 ### AppSidebar
 
@@ -66,7 +112,7 @@ Main navigation sidebar. Uses shadcn `Sidebar*` primitives + Radix `Collapsible`
 - **Top-level links** — Inbox, My Items
 - **Workspace section** — Strategy, Initiatives, Projects, Circles
 - **Your Circles** — one collapsible per circle with sub-items:
-  - Sessions (Previous / Upcoming shortcuts)
+  - Sessions (Previous / Current (if exists) / Upcoming shortcuts)
   - Decisions
   - Commitments
 
