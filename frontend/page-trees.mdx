@@ -147,44 +147,33 @@ Page body
 
 ## Decision Detail `/circles/:slug/decisions/:decisionSlug`
 
-Full decision view with tabs (overview, commitments, activity) and right sidebar.
+Single-page decision view with always-open right sidebar.
 
 ```
 PageHeader (via usePageHeader)
 └── PageHeaderRow
-    ├── PageHeaderGroup
-    │   ├── Circle icon
-    │   ├── Breadcrumb: "Circle > Decisions > DEC-N" + statement
-    │   └── Tab buttons: Overview | Commitments | Activity
     └── PageHeaderGroup
-        └── Sidebar toggle (PanelRight icon)
+        ├── Circle icon
+        └── Breadcrumb: "Circle > Decisions > DEC-N" + statement
 
-Page body (conditional on active tab)
-├── Overview tab (max-w-800)
-│   ├── PageTitle (editable, decision statement)
-│   ├── PropertiesRow (title="Properties")
-│   │   ├── PropertiesRow.Item → PropertySelect (status)
-│   │   ├── PropertiesRow.Item → Age indicator (colored)
-│   │   ├── PropertiesRow.Item → PropertySelect (owner)
-│   │   ├── PropertiesRow.Item → "Requested by" label
-│   │   └── PropertiesRow.Item → Circle label
-│   ├── "Rationale" → MarkdownEditor
-│   ├── "Implications" → bullet list
-│   └── "Discussion" → MarkdownEditor
-├── Commitments tab
-│   └── CommitmentsTable
-└── Activity tab (max-w-800)
-    └── ChangeLog
+Page body (max-w-800, mr-72 for sidebar)
+├── PageTitle (editable, decision statement)
+├── "Rationale" → MarkdownEditor
+├── "Discussion" → MarkdownEditor
+├── "Summary" → read-only statement text
+├── Checkbox: "Notify [requestor name]"
+├── "Commitments" → CommitmentsTable (showCircle=false, noDividers)
+└── "Activity" → ChangeLog
 
-DetailSidebar (fixed right, 288px, toggle)
-├── SidebarSection "Properties"
-│   └── PropertiesRow (stacked)
-│       ├── PropertiesRow.Item "Status" → Badge
-│       ├── PropertiesRow.Item "Age" → colored text
-│       ├── PropertiesRow.Item "Owner" → PropertySelect
-│       ├── PropertiesRow.Item "Requested" → text
-│       └── PropertiesRow.Item "Circle" → Link
-└── SidebarSection "Summary" → text
+Sidebar (fixed right, 288px, always open)
+└── SidebarSection "Properties"
+    └── PropertiesRow (stacked)
+        ├── PropertiesRow.Item "Status" → StatusField (editable)
+        ├── PropertiesRow.Item "Requested" → PersonField (read-only, showName)
+        ├── PropertiesRow.Item "Age" → colored text
+        ├── PropertiesRow.Item "Circle" → Link
+        ├── PropertiesRow.Item "Sponsor" → PersonField (editable, showName)
+        └── PropertiesRow.Item "Owner" → PersonField (editable, showName)
 ```
 
 ---

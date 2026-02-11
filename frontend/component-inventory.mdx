@@ -200,7 +200,7 @@ Activity feed. Each entry shows avatar, person name, action description, optiona
 |---|---|---|
 | `entries` | `ChangeLogEntry[]` | Activity entries |
 
-**Used in:** DecisionDetail (activity tab), CommitmentReview (activity tab)
+**Used in:** DecisionDetail (activity section), CommitmentReview (activity tab)
 
 ### HealthIndicator
 
@@ -276,7 +276,7 @@ Avatar-based person display. Read-only shows avatar + optional name. Editable sh
 | `onSelect` | `(person) => void` | — | Selection handler |
 | `className` | `string?` | — | Additional styling |
 
-**Used in:** DecisionsTable (owner/sponsor cell), CommitmentsTable (owner cell), InitiativesList (owner cell), InitiativeDetail (project table), ProjectsList (owner cell), Strategy (header, author)
+**Used in:** DecisionsTable (owner/sponsor cell), CommitmentsTable (owner cell), DecisionDetail (sidebar: requested by, sponsor, owner), InitiativesList (owner cell), InitiativeDetail (project table), ProjectsList (owner cell), Strategy (header, author)
 
 ### StatusField
 
@@ -292,7 +292,7 @@ Status badge display. Read-only renders a colored `Badge` using `statusVariant`.
 | `onSelect` | `(value) => void` | — | Selection handler |
 | `className` | `string?` | — | Additional styling |
 
-**Used in:** DecisionsTable (status cell, combined statusOwner cell), CommitmentsTable (status cell)
+**Used in:** DecisionsTable (status cell, combined statusOwner cell), CommitmentsTable (status cell), DecisionDetail (sidebar: status)
 
 ### SessionField
 
@@ -343,7 +343,7 @@ Inline property picker. Clickable trigger opens a popover with options. Each opt
 | `onSelect` | `(value) => void` | Selection handler |
 | `triggerClassName` | `string?` | Custom trigger styling |
 
-**Used in:** DecisionDetail (status, owner), InitiativeDetail (status, health, owner, target), ProjectDetail (health, visibility, owner)
+**Used in:** InitiativeDetail (status, health, owner, target), ProjectDetail (health, visibility, owner)
 
 ### MarkdownEditor
 
@@ -370,6 +370,7 @@ These are standard shadcn/ui components. Not documented individually here, but t
 | `Badge` | Status badges throughout the app |
 | `Avatar` | Person display throughout the app |
 | `Button` | Actions, filters, toggles |
+| `Checkbox` | DecisionDetail (notify requestor) |
 | `Popover` | Filter/Display dropdowns, PropertySelect, PersonSelector, icon picker |
 | `Select` | Filter dropdowns (health, team, owner), invite selector |
 | `Sidebar*` | AppSidebar |

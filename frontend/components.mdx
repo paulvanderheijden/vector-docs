@@ -142,9 +142,10 @@ On compact views (e.g. Session Detail), multiple columns are merged into a singl
 
 Detail pages (DecisionDetail, CommitmentReview, InitiativeDetail, ProjectDetail) share a common structure:
 
-- **Tabs** in the page header (overview, commitments/activity, etc.)
 - **Main content** area with `max-w-[800px]` centered, shifts right margin when sidebar is open
-- **Right sidebar** — fixed-position 288px panel (or 480px for SessionDetail drawer), toggled via PanelRight icon button. Uses CSS transition on width for smooth slide. Contains `SidebarSection` with `PropertiesRow` (stacked) inside.
+- **Right sidebar** — fixed-position 288px panel (or 480px for SessionDetail drawer). Contains `SidebarSection` with `PropertiesRow` (stacked) inside.
+
+DecisionDetail uses an always-open sidebar (no toggle). Other detail pages (CommitmentReview, InitiativeDetail, ProjectDetail) toggle the sidebar via PanelRight icon button with CSS transition on width. DecisionDetail also has no tabs — all content (rationale, discussion, summary, commitments, activity) renders on a single scrollable page.
 
 ### Inline editing
 

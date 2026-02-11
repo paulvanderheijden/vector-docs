@@ -13,7 +13,7 @@ description: "Overview of all screens in the Vector frontend."
 | **Circles List** | `/circles` | `CirclesList` | All circles with membership status, purpose, cadence, and member avatars |
 | **Circle Decisions** | `/circles/:slug/decisions` | `CircleView` | Circle's decisions, filterable by all/open, with session links |
 | **Circle Commitments** | `/circles/:slug/commitments` | `CircleView` | Circle's commitments with owner, due date, and status |
-| **Decision Detail** | `/circles/:slug/decisions/:decisionSlug` | `DecisionDetail` | Full decision view with overview, commitments, and activity tabs |
+| **Decision Detail** | `/circles/:slug/decisions/:decisionSlug` | `DecisionDetail` | Single-page decision view with always-open sidebar |
 | **Commitment Review** | `/circles/:slug/commitments/:commitmentSlug` | `CommitmentReview` | Commitment view with overview and activity tabs |
 | **Sessions List** | `/circles/:slug/sessions` | `SessionsList` | Paginated list of circle sessions (also `/upcoming` and `/previous` variants) |
 | **Session Detail** | `/circles/:slug/sessions/:sessionNumber` | `SessionDetail` | Meeting workspace with decision agenda, commitment review, and notes editor |
@@ -65,13 +65,24 @@ The commitment tracking view for a circle. Shows all commitments belonging to th
 
 ### Decision Detail
 
-Full context view for a single decision. Three tabs:
+Single-page view for a single decision with an always-open right sidebar (288px). No tabs — all content on one scrollable page.
 
-- **Overview** — editable statement (InlineText), inline properties row (status, age, owner, requestor, circle), rationale and discussion (MarkdownEditor), implications list
-- **Commitments** — linked commitments table
-- **Activity** — changelog feed
+**Main content (top to bottom):**
+1. **PageTitle** — editable decision statement
+2. **Rationale** — MarkdownEditor for the decision rationale
+3. **Discussion** — MarkdownEditor for session discussion notes
+4. **Summary** — read-only text showing the decision statement
+5. **Notify requestor** — checkbox to share the summary with the requestor (persistent field)
+6. **Commitments** — CommitmentsTable showing linked commitments
+7. **Activity** — ChangeLog feed
 
-Right sidebar (toggleable) mirrors properties in a structured panel.
+**Always-open sidebar:**
+- Status (editable StatusField)
+- Requested by (read-only PersonField with name)
+- Age (color-coded)
+- Circle (link)
+- Sponsor (editable PersonField with name)
+- Owner (editable PersonField with name)
 
 ### Commitment Review
 
