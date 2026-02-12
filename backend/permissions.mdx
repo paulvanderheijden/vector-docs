@@ -11,12 +11,31 @@ A person's capabilities change based on context. The same person can be an organ
 
 | Context | Derived from | Description |
 |---|---|---|
-| **Workspace Member** | `WorkspaceMember` record exists | Base access — the person is in the workspace |
-| **Circle Member** | Listed in `circle.members` with role `Member` | Can see and participate in circle activity |
-| **Circle Organizer** | Listed in `circle.members` with role `Organizer` | Can manage sessions and agendas |
-| **Workspace Admin** | `WorkspaceMember.role = Admin` | Can manage workspace settings and people |
+| **Workspace Member** | `WorkspaceMember` record exists and `is_active = True` | Base access — the person is in the workspace |
+| **Circle Member** | Listed in `circle_members` with role `Member` | Can see and participate in circle activity |
+| **Circle Organizer** | Listed in `circle_members` with role `Organizer` | Can manage sessions and agendas |
+| **Workspace Admin** | `WorkspaceMember.role = "admin"` | Can manage workspace settings and people |
 
 These are not levels in a hierarchy — they're independent contexts that combine. A person could be a workspace admin, an organizer in MT Weekly, a regular member in Product Forum, and have no access to People & Org.
+
+## Enforcement in Django
+
+Permissions are enforced at the **application level** via DRF permission classes and viewset mixins:
+
+| Layer | Mechanism | What it checks |
+|---|---|---|
+| **Request entry** | `HasWorkspaceAccess` permission class | User has active `WorkspaceMember` for the workspace slug in the URL |
+| **Queryset filtering** | `WorkspaceScopedViewSetMixin` | All queries scoped to the workspace in the URL |
+| **Object-level** | Custom permission classes per entity (future) | Circle membership, organizer role, ownership checks |
+| **Superuser** | `IsSuperUser` permission class | Bypasses workspace scoping for admin endpoints |
+
+```python
+# Example: a workspace-scoped viewset with workspace access check
+class DecisionViewSet(WorkspaceScopedViewSetMixin, viewsets.ModelViewSet):
+    queryset = Decision.objects.all()
+    serializer_class = DecisionSerializer
+    permission_classes = [HasWorkspaceAccess]
+```
 
 ## Capability matrix
 
@@ -89,7 +108,7 @@ Can this person schedule decisions for a session?
     → No → deny
 
 Can this person invite new members to the workspace?
-  → Is the person's WorkspaceMember.role = Admin?
+  → Is the person's WorkspaceMember.role = "admin"?
     → Yes → allow
     → No → deny
 ```
@@ -98,15 +117,15 @@ Can this person invite new members to the workspace?
 
 | Rule | Enforced by |
 |---|---|
-| A decision sponsor must be a member of the decision's circle | `sponsorPersonId` must be in `circle.members` (set when Scheduled) |
-| A commitment owner must be a member of the review circle | `ownerPersonId` must be in `reviewCircle.members` |
-| Circle content is only visible to circle members | Query filtering by membership |
-| Only organizers can manage session agendas | Role check on `circle.members` |
-| Only workspace admins can manage workspace settings | Role check on `WorkspaceMember` |
+| A decision sponsor must be a member of the decision's circle | Validated in serializer/view when setting `sponsor_person_id` |
+| A commitment owner must be a member of the review circle | Validated in serializer/view when setting `owner_person_id` |
+| Circle content is only visible to circle members | Queryset filtering by membership in the viewset |
+| Only organizers can manage session agendas | Permission check on `circle_members` role |
+| Only workspace admins can manage workspace settings | `HasWorkspaceAccess` + admin role check |
 
 ## Soft-delete and disabled members
 
-Workspace members are never hard-deleted. When a person is removed from a workspace, their `workspace_members.status` is set to `Disabled`. The RLS helper function `is_workspace_member()` only returns true for members with `status = 'Active'`, which immediately revokes all permissions derived from workspace membership.
+Workspace members are never hard-deleted. When a person is removed from a workspace, their `WorkspaceMember.is_active` is set to `False`. The `HasWorkspaceAccess` permission class only allows access for members with `is_active = True`, which immediately revokes all permissions derived from workspace membership.
 
 Historical references (e.g., requestor or sponsor on past decisions) remain intact because the person record is not deleted.
 
@@ -118,7 +137,7 @@ Historical references (e.g., requestor or sponsor on past decisions) remain inta
 | Person added to a circle | Immediately sees all circle content (decisions, commitments, sessions). |
 | Person promoted to organizer | Gains session management capabilities in that circle. |
 | Person demoted from organizer to member | Loses session management capabilities but retains all member access. |
-| Person disabled in workspace | Loses all active access (soft-delete via `status = 'Disabled'`). Historical references preserved. Active decision ownerships and commitment ownerships must be reassigned — the reassignment flow is not yet designed (deferred). |
+| Person disabled in workspace | Loses all active access (`is_active = False`). Historical references preserved. Active decision ownerships and commitment ownerships must be reassigned — the reassignment flow is not yet designed (deferred). |
 
 ## Why not explicit roles?
 

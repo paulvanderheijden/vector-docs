@@ -1,133 +1,178 @@
 ---
 title: "Auth & Multi-Tenancy"
-description: "How Vector implements authentication and workspace isolation with Supabase."
+description: "How Vector implements authentication and workspace isolation with Django."
 ---
 
-Vector uses Supabase Auth for authentication and Row-Level Security (RLS) for workspace isolation. Auth is at the user level; workspace access is determined by membership.
+Vector uses Django REST Framework with SimpleJWT for authentication and application-level scoping for workspace isolation. Auth is at the user level; workspace access is determined by membership.
 
 ## Authentication
 
 ### How it works
 
-Supabase Auth handles the entire auth lifecycle — sign up, sign in, token management, and session refresh. No custom auth code needed.
+The custom `User` model uses **email as the login identifier** — there is no username field. Authentication is handled via JWT tokens issued by SimpleJWT.
 
-```typescript
-// Sign in
-const { data, error } = await supabase.auth.signInWithPassword({
-  email: 'matt@mews.com',
-  password: '...'
-});
+```
+POST /auth/v1/login/
+{
+  "email": "matt@mews.com",
+  "password": "..."
+}
 
-// Session is automatically managed — tokens refresh transparently
-// Every subsequent supabase call includes the JWT automatically
+→ 200 OK
+{
+  "access": "eyJ...",
+  "refresh": "eyJ...",
+  "workspaces": [
+    { "slug": "mews", "name": "Mews", "role": "admin", "created_at": "..." }
+  ],
+  "active_workspace": "mews"
+}
 ```
 
 ### Auth flow
 
-1. User signs in via Supabase Auth (email/password or OAuth)
-2. Supabase returns a JWT containing the user's `auth.uid()`
-3. The Supabase JS client stores the session and auto-refreshes tokens
-4. Every database query includes the JWT — RLS policies use `auth.uid()` to determine access
+1. User signs in with email and password via `POST /auth/v1/login/`
+2. Django authenticates and returns JWT access + refresh tokens, plus the user's workspaces
+3. The frontend stores tokens and includes `Authorization: Bearer <access>` on every request
+4. SimpleJWT validates the token on each request — DRF permission classes check workspace access
+5. When the access token expires, the frontend refreshes it via `POST /auth/v1/token/refresh/`
 
 ### Token management
 
 | Setting | Value |
 |---|---|
-| Access token | Auto-managed by Supabase JS client |
-| Refresh | Automatic — no manual refresh logic needed |
-| Storage | Handled by `@supabase/supabase-js` (localStorage by default) |
-| Session detection | `supabase.auth.onAuthStateChange()` listener |
+| Access token lifetime | 30 minutes |
+| Refresh token lifetime | 7 days |
+| Token rotation | Disabled |
+| Blacklisting | Enabled (on logout) |
+| Auth header | `Authorization: Bearer <token>` |
 
-<Note>
-  Unlike the cobber-alpha approach (manual JWT with `_retry` flags and interceptors), Supabase handles token refresh transparently. The entire token lifecycle is managed by the client library.
-</Note>
+### Auth endpoints
 
-### User creation
+| Method | Endpoint | Description |
+|---|---|---|
+| `POST` | `/auth/v1/login/` | Email + password → JWT tokens + workspaces |
+| `POST` | `/auth/v1/logout/` | Blacklist refresh token |
+| `GET` | `/auth/v1/me/` | Current user info |
+| `GET` | `/auth/v1/workspaces/` | User's workspaces with roles |
+| `POST` | `/auth/v1/workspaces/switch/` | Set active workspace |
+| `POST` | `/auth/v1/token/` | SimpleJWT token obtain (standard) |
+| `POST` | `/auth/v1/token/refresh/` | SimpleJWT token refresh |
 
-When a user signs up via Supabase Auth, a trigger automatically creates a row in the `persons` table:
+### User model
 
-```sql
-CREATE OR REPLACE FUNCTION handle_new_user()
-RETURNS trigger AS $$
-BEGIN
-  INSERT INTO persons (id, email, name, initials)
-  VALUES (
-    NEW.id,
-    NEW.email,
-    COALESCE(NEW.raw_user_meta_data->>'name', ''),
-    COALESCE(NEW.raw_user_meta_data->>'initials', '')
-  );
-  RETURN NEW;
-END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
+The custom `User` extends `AbstractUser` with `username = None` and `USERNAME_FIELD = "email"`:
 
-CREATE TRIGGER on_auth_user_created
-  AFTER INSERT ON auth.users
-  FOR EACH ROW EXECUTE FUNCTION handle_new_user();
+```python
+class User(AbstractUser):
+    username = None
+    email = models.EmailField(unique=True)
+    USERNAME_FIELD = "email"
+    REQUIRED_FIELDS = []
+
+    last_active_workspace = models.ForeignKey(
+        "Workspace", on_delete=models.SET_NULL, null=True, blank=True
+    )
 ```
 
-The `persons.id` matches `auth.users.id` — this is how RLS policies map authenticated users to workspace membership.
+### Future: WorkOS for enterprise SSO
+
+WorkOS will be added when enterprise customers need SAML/SSO. The migration path:
+
+1. **Current** — email/password with JWT (SimpleJWT)
+2. **Future** — WorkOS AuthKit for SAML, directory sync, and MFA
+
+WorkOS provides a clean upgrade path because it handles the SSO handshake and returns a user identity that can be mapped to the existing `User` model. The JWT flow stays the same — WorkOS just becomes an additional authentication backend alongside email/password.
 
 ## Multi-tenancy
 
-### Workspace isolation via RLS
+### Workspace isolation via Django
 
-Every workspace-scoped table has a `workspace_id` column. RLS policies ensure a user can only access rows in workspaces they belong to:
+Every workspace-scoped API endpoint includes the workspace slug in the URL path:
 
-```sql
--- Core policy pattern: check workspace membership
-CREATE POLICY "workspace_isolation" ON decisions
-  FOR ALL
-  USING (
-    workspace_id IN (
-      SELECT workspace_id FROM workspace_members
-      WHERE person_id = auth.uid()
-    )
-  );
+```
+GET  /api/v1/{workspace_slug}/decisions/
+POST /api/v1/{workspace_slug}/decisions/
+GET  /api/v1/{workspace_slug}/decisions/{id}/
 ```
 
-This is enforced at the **database level** — even if the frontend code has a bug, Postgres itself rejects cross-tenant queries. This is stronger than the app-level filtering used in cobber-alpha.
+Two mechanisms enforce isolation:
+
+1. **`HasWorkspaceAccess` permission** — checks that the authenticated user has an active `WorkspaceMember` record for the workspace in the URL
+2. **`WorkspaceScopedViewSetMixin`** — auto-filters the queryset to only return rows belonging to the workspace, and auto-sets the workspace on create
+
+```python
+class DecisionViewSet(WorkspaceScopedViewSetMixin, viewsets.ModelViewSet):
+    queryset = Decision.objects.all()
+    serializer_class = DecisionSerializer
+    permission_classes = [HasWorkspaceAccess]
+```
+
+This ensures that every viewset inheriting the mixin can only see and create data within the authenticated user's workspace — no cross-tenant leaks.
 
 ### Workspace selection flow
 
-1. User signs in
-2. Frontend queries `workspace_members` to get the user's workspaces
+1. User signs in → response includes their workspaces
+2. Frontend stores the active workspace slug in state
 3. User selects a workspace (or is redirected to their `last_active_workspace`)
-4. Frontend stores the active `workspace_id` in state
-5. All subsequent queries include `.eq('workspace_id', workspaceId)`
-6. RLS double-checks that the user actually belongs to this workspace
+4. All subsequent API calls include the workspace slug in the URL
+5. `HasWorkspaceAccess` rejects requests where the user isn't a member
+6. `WorkspaceScopedViewSetMixin` filters querysets to the workspace
 
-```typescript
-// Get user's workspaces
-const { data: memberships } = await supabase
-  .from('workspace_members')
-  .select('workspace:workspaces(*), role')
-  .eq('person_id', user.id);
+```
+POST /auth/v1/workspaces/switch/
+{ "workspace_slug": "mews" }
 
-// All queries scoped to the selected workspace
-const { data: circles } = await supabase
-  .from('circles')
-  .select('*, members:circle_members(person:persons(*))')
-  .eq('workspace_id', activeWorkspaceId);
+→ 200 OK
+{ "active_workspace": "mews", "name": "Mews" }
 ```
 
-### Why RLS over app-level filtering
+### WorkspaceMember model
 
-| Concern | App-level (cobber) | RLS (Vector) |
-|---|---|---|
-| **Where isolation is enforced** | Python mixin in every viewset | Postgres policy on every table |
-| **What happens if you forget** | Data leak — wrong tenant sees data | Impossible — Postgres blocks it |
-| **Debugging** | Inspect Python code | `SELECT * FROM pg_policies` |
-| **Performance** | Extra WHERE clause per query | Same, but enforced by the planner |
+```python
+class WorkspaceMember(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    workspace = models.ForeignKey(Workspace, on_delete=models.CASCADE)
+    role = models.CharField(choices=[("admin", "Admin"), ("member", "Member")])
+    is_active = models.BooleanField(default=True)  # Soft-disable
 
-### Lessons from cobber-alpha
+    class Meta:
+        unique_together = ("user", "workspace")
+```
 
-These patterns were painful to get right in cobber-alpha. Supabase eliminates most of them:
+| Role | Description |
+|---|---|
+| `admin` | Can manage workspace settings, invite/remove people, create/edit circles |
+| `member` | Can view and create entities within the workspace |
 
-1. **Mixin-based scoping** → replaced by RLS. No mixin to forget to apply.
-2. **Manual token refresh with `_retry` flag** → replaced by Supabase's auto-refresh.
-3. **Graceful login fallbacks** → Supabase Auth handles errors internally.
-4. **`last_active_workspace` storage** → still needed, stored in `persons` table.
-5. **Double-check access (permission + queryset)** → RLS is the single source of truth.
+| is_active | Description |
+|---|---|
+| `True` | Normal access |
+| `False` | Soft-disabled — historical references preserved, no active access |
 
-The one pattern that carries over: **workspace slug in the URL**. The frontend still uses `/{workspaceSlug}/...` routes for navigation — this is a UX pattern, not a security mechanism. Security is enforced by RLS using `workspace_id`, not the slug.
+### Queryset-level scoping
+
+For cases outside viewsets (e.g., management commands, signals), the `WorkspaceScopedManager` provides `.for_user()` filtering:
+
+```python
+class WorkspaceScopedQuerySet(models.QuerySet):
+    def for_user(self, user):
+        if user.is_superuser:
+            return self
+        if user.is_authenticated:
+            workspace_ids = WorkspaceMember.objects.filter(
+                user=user, is_active=True
+            ).values_list("workspace_id", flat=True)
+            return self.filter(workspace_id__in=workspace_ids)
+        return self.none()
+```
+
+### Workspace slug in URLs
+
+The workspace slug appears in all domain API URLs. This is both a UX pattern (readable URLs) and a security mechanism — the `HasWorkspaceAccess` permission validates the slug against the user's memberships on every request.
+
+```
+/api/v1/mews/decisions/          → decisions in the "mews" workspace
+/api/v1/mews/circles/            → circles in the "mews" workspace
+/api/v1/mews/commitments/        → commitments in the "mews" workspace
+```

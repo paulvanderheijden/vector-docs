@@ -1,0 +1,312 @@
+---
+title: "Auth Lifecycle"
+description: "The complete login, session, and token lifecycle from first visit to logout."
+---
+
+This page documents the full authentication lifecycle — from unauthenticated state through login, token management, workspace selection, and logout.
+
+## Overview
+
+```
+Unauthenticated → Login → Token stored → Authenticated requests
+                                        → Token expires → Refresh → Continue
+                                        → Refresh expires → Re-login
+                                        → Logout → Token blacklisted → Unauthenticated
+```
+
+## 1. Login
+
+The user submits email and password. The backend authenticates and returns JWT tokens plus the user's workspaces.
+
+**Request:**
+
+```
+POST /auth/v1/login/
+Content-Type: application/json
+
+{
+  "email": "matt@mews.com",
+  "password": "..."
+}
+```
+
+**Response (200):**
+
+```json
+{
+  "access": "eyJhbGciOi...",
+  "refresh": "eyJhbGciOi...",
+  "workspaces": [
+    { "slug": "mews", "name": "Mews", "role": "admin", "created_at": "2026-01-15T10:00:00Z" }
+  ],
+  "active_workspace": "mews"
+}
+```
+
+**What happens on the backend:**
+
+1. Django's `authenticate()` verifies email + password against the `User` model
+2. SimpleJWT generates an access token (30 min) and refresh token (7 days)
+3. The user's workspaces are queried via `WorkspaceMember` (only `is_active=True`)
+4. If the user has no `last_active_workspace`, the first workspace is set as active
+5. The response includes both tokens and the workspace list
+
+**Error responses:**
+
+| Status | Body | Cause |
+|---|---|---|
+| 400 | `{"error": "Email and password are required"}` | Missing field |
+| 401 | `{"error": "Invalid credentials"}` | Wrong email or password |
+
+## 2. Token storage
+
+The frontend stores the tokens after login. The access token is sent with every API request; the refresh token is stored for renewal.
+
+```typescript
+// After login response
+localStorage.setItem('access_token', data.access);
+localStorage.setItem('refresh_token', data.refresh);
+```
+
+<Note>
+  For production, consider storing the refresh token in an `httpOnly` cookie instead of localStorage to reduce XSS exposure. The access token can stay in memory.
+</Note>
+
+## 3. Authenticated requests
+
+Every API request includes the access token in the `Authorization` header.
+
+```
+GET /api/v1/mews/decisions/
+Authorization: Bearer eyJhbGciOi...
+```
+
+**What happens on the backend:**
+
+1. SimpleJWT's `JWTAuthentication` extracts and validates the token
+2. The token contains the user ID — Django loads the `User` instance
+3. DRF permission classes run (e.g., `HasWorkspaceAccess` checks workspace membership)
+4. The viewset's queryset is scoped to the workspace via `WorkspaceScopedViewSetMixin`
+
+If the token is missing or invalid, the response is `401 Unauthorized`.
+
+## 4. Token expiry and refresh
+
+The access token expires after **30 minutes**. When the frontend receives a `401`, it attempts a silent refresh.
+
+**Request:**
+
+```
+POST /auth/v1/token/refresh/
+Content-Type: application/json
+
+{
+  "refresh": "eyJhbGciOi..."
+}
+```
+
+**Response (200):**
+
+```json
+{
+  "access": "eyJhbGciOi..."
+}
+```
+
+**Frontend refresh flow:**
+
+```typescript
+async function refreshAccessToken(): Promise<string | null> {
+  const refresh = localStorage.getItem('refresh_token');
+  if (!refresh) return null;
+
+  const response = await fetch('/auth/v1/token/refresh/', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ refresh }),
+  });
+
+  if (!response.ok) return null; // Refresh failed → re-login
+
+  const data = await response.json();
+  localStorage.setItem('access_token', data.access);
+  return data.access;
+}
+```
+
+**Recommended: request interceptor with automatic retry.**
+
+```typescript
+async function apiRequest(url: string, options: RequestInit = {}) {
+  let access = localStorage.getItem('access_token');
+
+  let response = await fetch(url, {
+    ...options,
+    headers: { ...options.headers, Authorization: `Bearer ${access}` },
+  });
+
+  if (response.status === 401) {
+    access = await refreshAccessToken();
+    if (!access) {
+      // Refresh token also expired → redirect to login
+      window.location.href = '/login';
+      return;
+    }
+    // Retry the original request with the new token
+    response = await fetch(url, {
+      ...options,
+      headers: { ...options.headers, Authorization: `Bearer ${access}` },
+    });
+  }
+
+  return response;
+}
+```
+
+## 5. Workspace selection
+
+After login, the frontend uses the `active_workspace` slug from the login response. The user can switch workspaces explicitly.
+
+**Switch workspace:**
+
+```
+POST /auth/v1/workspaces/switch/
+Authorization: Bearer eyJhbGciOi...
+Content-Type: application/json
+
+{
+  "workspace_slug": "mews"
+}
+```
+
+**Response (200):**
+
+```json
+{
+  "active_workspace": "mews",
+  "name": "Mews"
+}
+```
+
+**What happens on the backend:**
+
+1. Validates the user has an active `WorkspaceMember` for the requested workspace
+2. Updates `User.last_active_workspace` to the new workspace
+3. Returns the confirmed active workspace
+
+**Frontend flow:**
+
+1. On login: use `active_workspace` from the login response to set the initial workspace
+2. If `active_workspace` is `null` (no workspaces): show an onboarding/empty state
+3. On workspace switch: call the switch endpoint, update the stored slug, reload workspace-scoped data
+4. The workspace slug is included in all API URLs: `/api/v1/{workspace_slug}/...`
+
+## 6. Fetching user info
+
+The frontend can fetch the current user's profile at any time (e.g., on app load to verify the session is still valid).
+
+```
+GET /auth/v1/me/
+Authorization: Bearer eyJhbGciOi...
+```
+
+**Response (200):**
+
+```json
+{
+  "email": "matt@mews.com",
+  "name": "Matt Welle",
+  "active_workspace": "mews"
+}
+```
+
+A `401` response here means the session is gone — redirect to login.
+
+## 7. Logout
+
+The user logs out by blacklisting the refresh token. This prevents new access tokens from being issued. The current access token remains valid until it expires (max 30 minutes).
+
+**Request:**
+
+```
+POST /auth/v1/logout/
+Authorization: Bearer eyJhbGciOi...
+Content-Type: application/json
+
+{
+  "refresh": "eyJhbGciOi..."
+}
+```
+
+**Response (205):**
+
+```json
+{
+  "message": "Logged out successfully"
+}
+```
+
+**Frontend logout flow:**
+
+```typescript
+async function logout() {
+  const refresh = localStorage.getItem('refresh_token');
+  await fetch('/auth/v1/logout/', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${localStorage.getItem('access_token')}`,
+    },
+    body: JSON.stringify({ refresh }),
+  });
+
+  localStorage.removeItem('access_token');
+  localStorage.removeItem('refresh_token');
+  window.location.href = '/login';
+}
+```
+
+## 8. Session expiry
+
+When the refresh token expires (after **7 days**), the user must log in again. There is no silent re-authentication — the user sees the login page.
+
+**How the frontend detects this:**
+
+1. An API call returns `401`
+2. The refresh attempt also fails (refresh token expired or blacklisted)
+3. The frontend clears stored tokens and redirects to `/login`
+
+## Token timeline
+
+```
+Login
+  │
+  ├── Access token issued (valid 30 min)
+  ├── Refresh token issued (valid 7 days)
+  │
+  │   ... 30 min later ...
+  │
+  ├── Access token expires
+  ├── Frontend calls /auth/v1/token/refresh/
+  ├── New access token issued (valid 30 min)
+  │
+  │   ... repeats every 30 min ...
+  │
+  │   ... 7 days later ...
+  │
+  ├── Refresh token expires
+  ├── Refresh attempt fails → 401
+  └── Frontend redirects to /login
+```
+
+## Summary
+
+| Event | Endpoint | Result |
+|---|---|---|
+| Login | `POST /auth/v1/login/` | Access + refresh tokens, workspace list |
+| API request | Any authenticated endpoint | Token validated, workspace scoped |
+| Token expired | `POST /auth/v1/token/refresh/` | New access token |
+| Switch workspace | `POST /auth/v1/workspaces/switch/` | Active workspace updated |
+| Check session | `GET /auth/v1/me/` | User info or 401 |
+| Logout | `POST /auth/v1/logout/` | Refresh token blacklisted |
+| Session expired | Refresh fails | Redirect to login |

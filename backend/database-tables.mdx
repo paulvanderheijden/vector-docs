@@ -3,7 +3,7 @@ title: "Database Tables"
 description: "Complete Postgres table definitions for Vector."
 ---
 
-All tables live in the `public` schema of a Supabase Postgres database. The Supabase JS client auto-generates a REST API from these tables — no endpoints to write.
+All tables live in a PostgreSQL database hosted on Railway. Tables are defined as Django models and managed via Django migrations. The SQL below represents the resulting schema.
 
 ## Naming conventions
 
@@ -32,7 +32,7 @@ CREATE TABLE workspaces (
 
 ```sql
 CREATE TABLE persons (
-  id                       uuid PRIMARY KEY REFERENCES auth.users(id),
+  id                       uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   name                     text NOT NULL,
   email                    text NOT NULL UNIQUE,
   initials                 text NOT NULL,
@@ -42,7 +42,7 @@ CREATE TABLE persons (
 );
 ```
 
-The `id` column references `auth.users(id)` — this links Supabase Auth to the person record.
+The `persons` table stores profile data for people within Vector. In the Django `authentication` app, the `User` model handles login credentials (email/password, JWT), while `persons` holds workspace-visible profile data. A person record is created when a user is invited to a workspace.
 
 ### workspace_members
 
@@ -123,7 +123,7 @@ CREATE TABLE sessions (
 );
 ```
 
-The `number` column is auto-generated per circle via a trigger (see [Functions & Triggers](/backend/database-functions)). The `UNIQUE (circle_id, number)` constraint ensures no duplicates within a circle.
+The `number` column is auto-generated per circle via a trigger (see [Background Jobs & Triggers](/backend/database-functions)). The `UNIQUE (circle_id, number)` constraint ensures no duplicates within a circle.
 
 ### initiatives
 
@@ -357,3 +357,7 @@ CREATE TRIGGER set_updated_at BEFORE UPDATE ON persons
   FOR EACH ROW EXECUTE FUNCTION update_updated_at();
 -- ... (same for all tables with updated_at)
 ```
+
+<Note>
+  Django's `auto_now=True` on `DateTimeField` handles `updated_at` at the application level. The Postgres trigger is an additional safeguard for direct database operations.
+</Note>

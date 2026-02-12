@@ -3,78 +3,95 @@ title: "Backend Overview"
 description: "Technical architecture for the Vector backend."
 ---
 
-Vector uses **Supabase** as its backend — a hosted Postgres database with built-in auth, auto-generated REST API, Row-Level Security, and Edge Functions. There is no separate API server.
+Vector uses a **Django REST Framework** backend with PostgreSQL, hosted on **Railway**. Authentication is email/password with JWT tokens. Workspace isolation is enforced at the application level via permission classes and queryset scoping.
 
 ## Architecture
 
 ```
-React app (Vercel) → Supabase JS client → Postgres (Supabase)
-                                        → Supabase Auth
-                                        → Edge Functions (custom logic)
-                                        → Storage (file references)
+React app (Vercel) → Django REST API (Railway) → PostgreSQL (Railway)
 ```
 
-The frontend calls Supabase directly. All CRUD operations go through the auto-generated PostgREST API. Authorization is enforced at the database level via Row-Level Security (RLS) policies — not in application code.
+The frontend calls the Django API over HTTPS. All CRUD operations go through explicit DRF viewsets. Authorization is enforced in Django via permission classes and workspace-scoped querysets.
 
 ## Tech stack
 
 | Layer | Technology |
 |---|---|
-| **Database** | PostgreSQL (hosted by Supabase) |
-| **Auth** | Supabase Auth (JWT, email/password, OAuth) |
-| **API** | Auto-generated REST via PostgREST |
-| **Authorization** | Row-Level Security (RLS) on Postgres |
-| **Custom logic** | Supabase Edge Functions (Deno/TypeScript) |
-| **File storage** | Supabase Storage (for decision references) |
-| **Hosting** | Supabase (database + auth + functions), Vercel (frontend) |
+| **Framework** | Django 5.1 + Django REST Framework |
+| **Database** | PostgreSQL (hosted on Railway) |
+| **Auth** | Email/password login, JWT via SimpleJWT |
+| **Authorization** | DRF permission classes + workspace-scoped viewset mixins |
+| **Future SSO** | WorkOS (SAML, directory sync — not yet implemented) |
+| **Hosting** | Railway (backend + database), Vercel (frontend) |
 
-## Why Supabase
+## Why Django
 
-| Concern | Supabase | Traditional backend (Django) |
-|---|---|---|
-| **CRUD API** | Free — auto-generated from tables | Every endpoint written manually |
-| **Auth** | Built-in, zero code | Custom implementation |
-| **Tenant isolation** | Database-level (RLS) — Postgres enforces it | App-level filtering — one bug and data leaks |
-| **Realtime** | Built-in subscriptions | Separate WebSocket setup |
-| **Infrastructure** | Managed — nothing to deploy | Separate server to maintain |
+| Concern | Approach |
+|---|---|
+| **API** | Explicit DRF viewsets and serializers — full control over endpoints |
+| **Auth** | SimpleJWT for token management, custom User model with email login |
+| **Workspace isolation** | `WorkspaceScopedViewSetMixin` auto-filters querysets by workspace |
+| **Permissions** | DRF permission classes (`HasWorkspaceAccess`) checked on every request |
+| **Admin** | Built-in Django admin for workspace and user management |
+| **Migrations** | Django's migration framework — version-controlled, reversible |
+| **Future SSO** | WorkOS integration for enterprise SAML when needed |
+
+## Project structure
+
+```
+vector-backend/
+├── vector/                     # Django project package
+│   ├── settings.py
+│   ├── urls.py
+│   ├── wsgi.py
+│   └── asgi.py
+├── authentication/             # Auth app
+│   ├── models.py               # User, Workspace, WorkspaceMember
+│   ├── serializers.py
+│   ├── views.py                # login, logout, me, workspaces, switch
+│   ├── urls.py
+│   └── admin.py
+└── core/                       # Shared utilities
+    ├── permissions.py           # HasWorkspaceAccess, IsSuperUser
+    ├── viewsets.py              # WorkspaceScopedViewSetMixin
+    ├── managers.py              # WorkspaceScopedManager
+    └── models.py                # WorkspaceScopedQuerySet
+```
+
+Future domain apps (e.g., `circles`, `decisions`, `commitments`) will follow the same pattern — each app gets its own models, serializers, viewsets, and URLs, all workspace-scoped via the core utilities.
 
 ## Frontend integration
 
-The React app uses `@supabase/supabase-js` to interact with the database:
+The React app authenticates via JWT and includes the token in every request:
 
 ```typescript
-import { createClient } from '@supabase/supabase-js';
+// Login
+const response = await fetch('/auth/v1/login/', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({ email, password }),
+});
+const { access, refresh, workspaces, active_workspace } = await response.json();
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-);
-
-// All queries are automatically filtered by RLS policies
-const { data: decisions } = await supabase
-  .from('decisions')
-  .select('*, sponsor:persons!sponsor_person_id(*)')
-  .eq('workspace_id', workspaceId);
+// Authenticated requests
+const decisions = await fetch(`/api/v1/${workspaceSlug}/decisions/`, {
+  headers: { Authorization: `Bearer ${access}` },
+});
 ```
-
-No API layer to build, no serializers, no viewsets. The database schema defines the API surface.
 
 ## Sections
 
 <CardGroup cols={2}>
+  <Card title="Auth & Multi-Tenancy" icon="lock" href="/backend/auth-and-tenancy">
+    JWT authentication, workspace isolation, and the WorkOS roadmap.
+  </Card>
+  <Card title="Permissions" icon="user-shield" href="/backend/permissions">
+    How permissions are derived from data relationships and enforced in Django.
+  </Card>
   <Card title="Database Tables" icon="database" href="/backend/database-tables">
     Complete table definitions — columns, types, constraints, and indexes.
   </Card>
-  <Card title="RLS Policies" icon="shield" href="/backend/database-rls">
-    Row-Level Security policies that enforce multi-tenancy and permissions.
-  </Card>
-  <Card title="Functions & Triggers" icon="bolt" href="/backend/database-functions">
-    Postgres functions, triggers, and Supabase Edge Functions.
-  </Card>
-  <Card title="Auth & Multi-Tenancy" icon="lock" href="/backend/auth-and-tenancy">
-    Authentication setup and workspace isolation architecture.
-  </Card>
-  <Card title="Permissions" icon="user-shield" href="/backend/permissions">
-    How permissions are derived from data relationships and enforced via RLS.
+  <Card title="Background Jobs & Triggers" icon="bolt" href="/backend/database-functions">
+    Django management commands, signals, and Postgres triggers.
   </Card>
 </CardGroup>

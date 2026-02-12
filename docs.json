@@ -83,6 +83,7 @@
             "group": "Architecture",
             "pages": [
               "backend/auth-and-tenancy",
+              "backend/auth-lifecycle",
               "backend/permissions"
             ]
           },
@@ -97,7 +98,6 @@
             "group": "Database",
             "pages": [
               "backend/database-tables",
-              "backend/database-rls",
               "backend/database-functions"
             ]
           }

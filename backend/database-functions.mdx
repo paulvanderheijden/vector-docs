@@ -1,11 +1,13 @@
 ---
-title: "Functions & Triggers"
-description: "Postgres functions, triggers, and Edge Functions for custom logic."
+title: "Background Jobs & Triggers"
+description: "Django management commands, signals, and Postgres triggers for custom logic."
 ---
 
-Most of Vector's behavior is handled by the Supabase auto-generated API and RLS policies. The functions below cover the remaining custom logic.
+Most of Vector's behavior is handled by DRF viewsets and serializers. The items below cover custom logic that runs outside normal request handling.
 
 ## Postgres triggers
+
+Postgres triggers handle logic that must be enforced regardless of whether the change comes from Django or a direct database operation.
 
 ### Auto-generate session numbers
 
@@ -28,33 +30,9 @@ CREATE TRIGGER set_session_number
   FOR EACH ROW EXECUTE FUNCTION generate_session_number();
 ```
 
-### Create person on sign-up
-
-When a user signs up via Supabase Auth, a corresponding `persons` row is created automatically.
-
-```sql
-CREATE OR REPLACE FUNCTION handle_new_user()
-RETURNS trigger AS $$
-BEGIN
-  INSERT INTO persons (id, email, name, initials)
-  VALUES (
-    NEW.id,
-    NEW.email,
-    COALESCE(NEW.raw_user_meta_data->>'name', ''),
-    COALESCE(NEW.raw_user_meta_data->>'initials', '')
-  );
-  RETURN NEW;
-END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
-
-CREATE TRIGGER on_auth_user_created
-  AFTER INSERT ON auth.users
-  FOR EACH ROW EXECUTE FUNCTION handle_new_user();
-```
-
 ### Update `updated_at` timestamps
 
-Shared trigger applied to all tables with an `updated_at` column.
+Shared trigger applied to all tables with an `updated_at` column. This acts as a safeguard alongside Django's `auto_now=True`.
 
 ```sql
 CREATE OR REPLACE FUNCTION update_updated_at()
@@ -68,579 +46,111 @@ $$ LANGUAGE plpgsql;
 
 Applied to: `workspaces`, `persons`, `circles`, `sessions`, `initiatives`, `projects`, `decisions`, `commitments`, `project_updates`.
 
-## Postgres functions
+## Django model validation
+
+Validation that was previously handled by Postgres triggers is now enforced in Django serializers and model `clean()` methods. This keeps validation logic in one place (Python) and provides better error messages to the API consumer.
 
 ### Validate sponsor is circle member
 
-Ensures the decision sponsor belongs to the decision's circle. Only validates when `sponsor_person_id` is set (it's nullable — set when the decision is Scheduled).
+Ensures the decision sponsor belongs to the decision's circle. Validated when `sponsor_person_id` is set (it's nullable — set when the decision is Scheduled).
 
-```sql
-CREATE OR REPLACE FUNCTION validate_decision_sponsor()
-RETURNS trigger AS $$
-BEGIN
-  IF NEW.sponsor_person_id IS NOT NULL AND NOT EXISTS (
-    SELECT 1 FROM circle_members
-    WHERE circle_id = NEW.circle_id AND person_id = NEW.sponsor_person_id
-  ) THEN
-    RAISE EXCEPTION 'Sponsor must be a member of the decision circle';
-  END IF;
-  RETURN NEW;
-END;
-$$ LANGUAGE plpgsql;
-
-CREATE TRIGGER check_decision_sponsor
-  BEFORE INSERT OR UPDATE ON decisions
-  FOR EACH ROW EXECUTE FUNCTION validate_decision_sponsor();
+```python
+# In DecisionSerializer or Decision.clean()
+def validate_sponsor(self, decision):
+    if decision.sponsor_person_id and not CircleMember.objects.filter(
+        circle_id=decision.circle_id,
+        person_id=decision.sponsor_person_id
+    ).exists():
+        raise ValidationError("Sponsor must be a member of the decision's circle")
 ```
 
 ### Validate commitment owner is circle member
 
 Ensures the commitment owner belongs to the review circle.
 
-```sql
-CREATE OR REPLACE FUNCTION validate_commitment_owner()
-RETURNS trigger AS $$
-BEGIN
-  IF NOT EXISTS (
-    SELECT 1 FROM circle_members
-    WHERE circle_id = NEW.review_circle_id AND person_id = NEW.owner_person_id
-  ) THEN
-    RAISE EXCEPTION 'Commitment owner must be a member of the review circle';
-  END IF;
-  RETURN NEW;
-END;
-$$ LANGUAGE plpgsql;
-
-CREATE TRIGGER check_commitment_owner
-  BEFORE INSERT OR UPDATE ON commitments
-  FOR EACH ROW EXECUTE FUNCTION validate_commitment_owner();
+```python
+# In CommitmentSerializer or Commitment.clean()
+def validate_owner(self, commitment):
+    if not CircleMember.objects.filter(
+        circle_id=commitment.review_circle_id,
+        person_id=commitment.owner_person_id
+    ).exists():
+        raise ValidationError("Commitment owner must be a member of the review circle")
 ```
 
-## Activity event triggers
+## Activity event creation
 
-Activity events are generated automatically via Postgres triggers. A shared helper function handles the INSERT into `activity_events`. Each entity has its own trigger that detects what changed and emits the right event.
+Activity events are created via Django signals or explicit calls in viewset `perform_create`/`perform_update` methods. A helper function handles the INSERT into `activity_events`.
 
-See the [event catalog](/domain/schema#event-catalog) for the full list of actions and metadata.
-
-### Helper: emit activity event
-
-```sql
-CREATE OR REPLACE FUNCTION emit_activity_event(
-  p_workspace_id uuid,
-  p_actor_person_id uuid,
-  p_entity_type text,
-  p_entity_id uuid,
-  p_action text,
-  p_metadata jsonb DEFAULT NULL
-)
-RETURNS void AS $$
-BEGIN
-  INSERT INTO activity_events (workspace_id, actor_person_id, entity_type, entity_id, action, metadata)
-  VALUES (p_workspace_id, p_actor_person_id, p_entity_type, p_entity_id, p_action, p_metadata);
-END;
-$$ LANGUAGE plpgsql;
+```python
+# core/activity.py
+def emit_activity_event(workspace_id, actor_person_id, entity_type, entity_id, action, metadata=None):
+    ActivityEvent.objects.create(
+        workspace_id=workspace_id,
+        actor_person_id=actor_person_id,
+        entity_type=entity_type,
+        entity_id=entity_id,
+        action=action,
+        metadata=metadata or {},
+    )
 ```
 
-### Decision activity triggers
-
-```sql
-CREATE OR REPLACE FUNCTION track_decision_activity()
-RETURNS trigger AS $$
-BEGIN
-  IF TG_OP = 'INSERT' THEN
-    PERFORM emit_activity_event(
-      NEW.workspace_id, NEW.requested_by_person_id,
-      'Decision', NEW.id, 'created'
-    );
-    RETURN NEW;
-  END IF;
-
-  IF TG_OP = 'UPDATE' THEN
-    -- Status changed
-    IF OLD.status IS DISTINCT FROM NEW.status THEN
-      PERFORM emit_activity_event(
-        NEW.workspace_id, auth.uid(),
-        'Decision', NEW.id, 'status_changed',
-        jsonb_build_object('from', OLD.status, 'to', NEW.status)
-      );
-    END IF;
-
-    -- Circle changed
-    IF OLD.circle_id IS DISTINCT FROM NEW.circle_id THEN
-      PERFORM emit_activity_event(
-        NEW.workspace_id, auth.uid(),
-        'Decision', NEW.id, 'moved_circle',
-        jsonb_build_object('from_circle_id', OLD.circle_id, 'to_circle_id', NEW.circle_id)
-      );
-    END IF;
-
-    -- Sponsor assigned or changed
-    IF OLD.sponsor_person_id IS DISTINCT FROM NEW.sponsor_person_id AND NEW.sponsor_person_id IS NOT NULL THEN
-      PERFORM emit_activity_event(
-        NEW.workspace_id, auth.uid(),
-        'Decision', NEW.id, 'sponsor_assigned',
-        jsonb_build_object('person_id', NEW.sponsor_person_id)
-      );
-    END IF;
-
-    -- Owner assigned or changed
-    IF OLD.owner_person_id IS DISTINCT FROM NEW.owner_person_id AND NEW.owner_person_id IS NOT NULL THEN
-      PERFORM emit_activity_event(
-        NEW.workspace_id, auth.uid(),
-        'Decision', NEW.id, 'owner_assigned',
-        jsonb_build_object('person_id', NEW.owner_person_id)
-      );
-    END IF;
-
-    RETURN NEW;
-  END IF;
-
-  RETURN NULL;
-END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
-
-CREATE TRIGGER decision_activity
-  AFTER INSERT OR UPDATE ON decisions
-  FOR EACH ROW EXECUTE FUNCTION track_decision_activity();
-```
-
-### Commitment activity triggers
-
-```sql
-CREATE OR REPLACE FUNCTION track_commitment_activity()
-RETURNS trigger AS $$
-BEGIN
-  IF TG_OP = 'INSERT' THEN
-    PERFORM emit_activity_event(
-      NEW.workspace_id, NEW.owner_person_id,
-      'Commitment', NEW.id, 'created'
-    );
-    RETURN NEW;
-  END IF;
-
-  IF TG_OP = 'UPDATE' THEN
-    -- Status changed
-    IF OLD.status IS DISTINCT FROM NEW.status THEN
-      PERFORM emit_activity_event(
-        NEW.workspace_id, auth.uid(),
-        'Commitment', NEW.id, 'status_changed',
-        jsonb_build_object('from', OLD.status, 'to', NEW.status)
-      );
-    END IF;
-
-    -- Owner reassigned
-    IF OLD.owner_person_id IS DISTINCT FROM NEW.owner_person_id THEN
-      PERFORM emit_activity_event(
-        NEW.workspace_id, auth.uid(),
-        'Commitment', NEW.id, 'owner_reassigned',
-        jsonb_build_object('from_person_id', OLD.owner_person_id, 'to_person_id', NEW.owner_person_id)
-      );
-    END IF;
-
-    -- Due date changed
-    IF OLD.due IS DISTINCT FROM NEW.due THEN
-      PERFORM emit_activity_event(
-        NEW.workspace_id, auth.uid(),
-        'Commitment', NEW.id, 'due_date_changed',
-        jsonb_build_object('from', OLD.due, 'to', NEW.due)
-      );
-    END IF;
-
-    RETURN NEW;
-  END IF;
-
-  RETURN NULL;
-END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
-
-CREATE TRIGGER commitment_activity
-  AFTER INSERT OR UPDATE ON commitments
-  FOR EACH ROW EXECUTE FUNCTION track_commitment_activity();
-```
-
-### Session activity triggers
-
-```sql
-CREATE OR REPLACE FUNCTION track_session_activity()
-RETURNS trigger AS $$
-DECLARE
-  v_workspace_id uuid;
-  v_id uuid;
-  v_old_decisions uuid[] := COALESCE(OLD.decision_ids, ARRAY[]::uuid[]);
-  v_new_decisions uuid[] := COALESCE(NEW.decision_ids, ARRAY[]::uuid[]);
-  v_old_commitments uuid[] := COALESCE(OLD.commitment_ids, ARRAY[]::uuid[]);
-  v_new_commitments uuid[] := COALESCE(NEW.commitment_ids, ARRAY[]::uuid[]);
-BEGIN
-  SELECT workspace_id INTO v_workspace_id FROM circles WHERE id = NEW.circle_id;
-
-  IF TG_OP = 'INSERT' THEN
-    PERFORM emit_activity_event(
-      v_workspace_id, auth.uid(), 'Session', NEW.id, 'created'
-    );
-    RETURN NEW;
-  END IF;
-
-  IF TG_OP = 'UPDATE' THEN
-    -- Completed
-    IF OLD.completed = false AND NEW.completed = true THEN
-      PERFORM emit_activity_event(
-        v_workspace_id, auth.uid(), 'Session', NEW.id, 'completed'
-      );
-    END IF;
-
-    -- Decision added to agenda
-    FOREACH v_id IN ARRAY v_new_decisions LOOP
-      IF NOT (v_id = ANY(v_old_decisions)) THEN
-        PERFORM emit_activity_event(
-          v_workspace_id, auth.uid(), 'Session', NEW.id, 'decision_added',
-          jsonb_build_object('decision_id', v_id)
-        );
-      END IF;
-    END LOOP;
-
-    -- Decision removed from agenda
-    FOREACH v_id IN ARRAY v_old_decisions LOOP
-      IF NOT (v_id = ANY(v_new_decisions)) THEN
-        PERFORM emit_activity_event(
-          v_workspace_id, auth.uid(), 'Session', NEW.id, 'decision_removed',
-          jsonb_build_object('decision_id', v_id)
-        );
-      END IF;
-    END LOOP;
-
-    -- Commitment added to session
-    FOREACH v_id IN ARRAY v_new_commitments LOOP
-      IF NOT (v_id = ANY(v_old_commitments)) THEN
-        PERFORM emit_activity_event(
-          v_workspace_id, auth.uid(), 'Session', NEW.id, 'commitment_added',
-          jsonb_build_object('commitment_id', v_id)
-        );
-      END IF;
-    END LOOP;
-
-    -- Commitment removed from session
-    FOREACH v_id IN ARRAY v_old_commitments LOOP
-      IF NOT (v_id = ANY(v_new_commitments)) THEN
-        PERFORM emit_activity_event(
-          v_workspace_id, auth.uid(), 'Session', NEW.id, 'commitment_removed',
-          jsonb_build_object('commitment_id', v_id)
-        );
-      END IF;
-    END LOOP;
-
-    RETURN NEW;
-  END IF;
-
-  RETURN NULL;
-END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
-
-CREATE TRIGGER session_activity
-  AFTER INSERT OR UPDATE ON sessions
-  FOR EACH ROW EXECUTE FUNCTION track_session_activity();
-```
-
-### Circle membership activity triggers
-
-```sql
-CREATE OR REPLACE FUNCTION track_circle_member_activity()
-RETURNS trigger AS $$
-DECLARE
-  v_workspace_id uuid;
-BEGIN
-  SELECT workspace_id INTO v_workspace_id FROM circles WHERE id = COALESCE(NEW.circle_id, OLD.circle_id);
-
-  IF TG_OP = 'INSERT' THEN
-    PERFORM emit_activity_event(
-      v_workspace_id, auth.uid(),
-      'Circle', NEW.circle_id, 'member_added',
-      jsonb_build_object('person_id', NEW.person_id, 'role', NEW.role)
-    );
-    RETURN NEW;
-  END IF;
-
-  IF TG_OP = 'DELETE' THEN
-    PERFORM emit_activity_event(
-      v_workspace_id, auth.uid(),
-      'Circle', OLD.circle_id, 'member_removed',
-      jsonb_build_object('person_id', OLD.person_id)
-    );
-    RETURN OLD;
-  END IF;
-
-  IF TG_OP = 'UPDATE' AND OLD.role IS DISTINCT FROM NEW.role THEN
-    PERFORM emit_activity_event(
-      v_workspace_id, auth.uid(),
-      'Circle', NEW.circle_id, 'member_role_changed',
-      jsonb_build_object('person_id', NEW.person_id, 'from', OLD.role, 'to', NEW.role)
-    );
-    RETURN NEW;
-  END IF;
-
-  RETURN NULL;
-END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
-
-CREATE TRIGGER circle_member_activity
-  AFTER INSERT OR UPDATE OR DELETE ON circle_members
-  FOR EACH ROW EXECUTE FUNCTION track_circle_member_activity();
-```
-
-### Initiative activity triggers
-
-```sql
-CREATE OR REPLACE FUNCTION track_initiative_activity()
-RETURNS trigger AS $$
-BEGIN
-  IF TG_OP = 'INSERT' THEN
-    PERFORM emit_activity_event(
-      NEW.workspace_id, auth.uid(),
-      'Initiative', NEW.id, 'created'
-    );
-    RETURN NEW;
-  END IF;
-
-  IF TG_OP = 'UPDATE' AND OLD.status IS DISTINCT FROM NEW.status THEN
-    PERFORM emit_activity_event(
-      NEW.workspace_id, auth.uid(),
-      'Initiative', NEW.id, 'status_changed',
-      jsonb_build_object('from', OLD.status, 'to', NEW.status)
-    );
-  END IF;
-
-  RETURN NEW;
-END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
-
-CREATE TRIGGER initiative_activity
-  AFTER INSERT OR UPDATE ON initiatives
-  FOR EACH ROW EXECUTE FUNCTION track_initiative_activity();
-```
-
-### Initiative/Project circle link triggers
-
-```sql
-CREATE OR REPLACE FUNCTION track_initiative_circle_activity()
-RETURNS trigger AS $$
-DECLARE
-  v_workspace_id uuid;
-BEGIN
-  SELECT workspace_id INTO v_workspace_id FROM initiatives WHERE id = COALESCE(NEW.initiative_id, OLD.initiative_id);
-
-  IF TG_OP = 'INSERT' THEN
-    PERFORM emit_activity_event(
-      v_workspace_id, auth.uid(),
-      'Initiative', NEW.initiative_id, 'circle_linked',
-      jsonb_build_object('circle_id', NEW.circle_id)
-    );
-  END IF;
-
-  IF TG_OP = 'DELETE' THEN
-    PERFORM emit_activity_event(
-      v_workspace_id, auth.uid(),
-      'Initiative', OLD.initiative_id, 'circle_unlinked',
-      jsonb_build_object('circle_id', OLD.circle_id)
-    );
-  END IF;
-
-  RETURN COALESCE(NEW, OLD);
-END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
-
-CREATE TRIGGER initiative_circle_activity
-  AFTER INSERT OR DELETE ON initiative_circles
-  FOR EACH ROW EXECUTE FUNCTION track_initiative_circle_activity();
-
-CREATE OR REPLACE FUNCTION track_project_circle_activity()
-RETURNS trigger AS $$
-DECLARE
-  v_workspace_id uuid;
-BEGIN
-  SELECT workspace_id INTO v_workspace_id FROM projects WHERE id = COALESCE(NEW.project_id, OLD.project_id);
-
-  IF TG_OP = 'INSERT' THEN
-    PERFORM emit_activity_event(
-      v_workspace_id, auth.uid(),
-      'Project', NEW.project_id, 'circle_linked',
-      jsonb_build_object('circle_id', NEW.circle_id)
-    );
-  END IF;
-
-  IF TG_OP = 'DELETE' THEN
-    PERFORM emit_activity_event(
-      v_workspace_id, auth.uid(),
-      'Project', OLD.project_id, 'circle_unlinked',
-      jsonb_build_object('circle_id', OLD.circle_id)
-    );
-  END IF;
-
-  RETURN COALESCE(NEW, OLD);
-END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
-
-CREATE TRIGGER project_circle_activity
-  AFTER INSERT OR DELETE ON project_circles
-  FOR EACH ROW EXECUTE FUNCTION track_project_circle_activity();
-```
-
-### Project activity triggers
-
-```sql
-CREATE OR REPLACE FUNCTION track_project_activity()
-RETURNS trigger AS $$
-BEGIN
-  IF TG_OP = 'INSERT' THEN
-    PERFORM emit_activity_event(
-      NEW.workspace_id, auth.uid(),
-      'Project', NEW.id, 'created'
-    );
-    RETURN NEW;
-  END IF;
-
-  IF TG_OP = 'UPDATE' AND OLD.lead_person_id IS DISTINCT FROM NEW.lead_person_id THEN
-    PERFORM emit_activity_event(
-      NEW.workspace_id, auth.uid(),
-      'Project', NEW.id, 'lead_changed',
-      jsonb_build_object('from_person_id', OLD.lead_person_id, 'to_person_id', NEW.lead_person_id)
-    );
-  END IF;
-
-  RETURN NEW;
-END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
-
-CREATE TRIGGER project_activity
-  AFTER INSERT OR UPDATE ON projects
-  FOR EACH ROW EXECUTE FUNCTION track_project_activity();
-```
-
-### Decision reference activity triggers
-
-```sql
-CREATE OR REPLACE FUNCTION track_decision_reference_activity()
-RETURNS trigger AS $$
-DECLARE
-  v_workspace_id uuid;
-BEGIN
-  SELECT workspace_id INTO v_workspace_id FROM decisions WHERE id = COALESCE(NEW.decision_id, OLD.decision_id);
-
-  IF TG_OP = 'INSERT' THEN
-    PERFORM emit_activity_event(
-      v_workspace_id, auth.uid(),
-      'Decision', NEW.decision_id, 'reference_added',
-      jsonb_build_object('reference_id', NEW.id)
-    );
-  END IF;
-
-  IF TG_OP = 'DELETE' THEN
-    PERFORM emit_activity_event(
-      v_workspace_id, auth.uid(),
-      'Decision', OLD.decision_id, 'reference_removed',
-      jsonb_build_object('reference_id', OLD.id)
-    );
-  END IF;
-
-  RETURN COALESCE(NEW, OLD);
-END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
-
-CREATE TRIGGER decision_reference_activity
-  AFTER INSERT OR DELETE ON decision_references
-  FOR EACH ROW EXECUTE FUNCTION track_decision_reference_activity();
-```
-
-### Project update activity trigger
-
-```sql
-CREATE OR REPLACE FUNCTION track_project_update_activity()
-RETURNS trigger AS $$
-DECLARE
-  v_workspace_id uuid;
-BEGIN
-  SELECT workspace_id INTO v_workspace_id FROM projects WHERE id = NEW.project_id;
-
-  PERFORM emit_activity_event(
-    v_workspace_id, NEW.author_person_id,
-    'Project', NEW.project_id, 'update_posted',
-    jsonb_build_object('update_id', NEW.id, 'health', NEW.health)
-  );
-
-  RETURN NEW;
-END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
-
-CREATE TRIGGER project_update_activity
-  AFTER INSERT ON project_updates
-  FOR EACH ROW EXECUTE FUNCTION track_project_update_activity();
-```
-
-## Edge Functions
-
-Supabase Edge Functions handle logic that goes beyond CRUD and database triggers. They run as serverless Deno/TypeScript functions.
-
-### When to use Edge Functions
+### When to use signals vs. explicit calls
 
 | Use case | Approach |
 |---|---|
-| CRUD operations | Supabase JS client (auto-generated API) |
-| Access control | RLS policies |
-| Data validation | Postgres triggers |
-| Computed values | Frontend (e.g., decision age from `requested_date`) |
-| External integrations | Edge Functions |
-| Complex multi-step operations | Edge Functions |
+| Status changes, field updates | Explicit call in `perform_update()` — can compare old vs. new values |
+| Entity creation | Explicit call in `perform_create()` — actor is `request.user` |
+| Cascading events (e.g., circle membership changes) | Django `post_save`/`post_delete` signals |
 
-### Planned Edge Functions
+See the [event catalog](/domain/schema#event-catalog) for the full list of actions and metadata.
 
-**Auto-roll commitments**
+## Planned management commands
 
-A scheduled Edge Function that runs daily and rolls commitments whose due date has passed:
+Django management commands handle scheduled and batch operations. These can be triggered via Railway cron jobs.
 
-```typescript
-// supabase/functions/auto-roll-commitments/index.ts
-import { createClient } from '@supabase/supabase-js';
+### Auto-roll commitments
 
-Deno.serve(async () => {
-  const supabase = createClient(
-    Deno.env.get('SUPABASE_URL')!,
-    Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!  // Bypasses RLS
-  );
+A scheduled command that runs daily and rolls commitments whose due date has passed:
 
-  const { error } = await supabase
-    .from('commitments')
-    .update({ status: 'Rolled' })
-    .in('status', ['Active', 'At risk'])
-    .lt('due', new Date().toISOString().split('T')[0]);
+```python
+# commitments/management/commands/auto_roll_commitments.py
+class Command(BaseCommand):
+    help = "Roll overdue commitments"
 
-  return new Response(JSON.stringify({ error }), {
-    headers: { 'Content-Type': 'application/json' },
-  });
-});
+    def handle(self, *args, **options):
+        today = date.today()
+        rolled = Commitment.objects.filter(
+            status__in=["Active", "At risk"],
+            due__lt=today,
+        ).update(status="Rolled")
+
+        self.stdout.write(f"Rolled {rolled} overdue commitments")
 ```
 
-Triggered via a Supabase cron job (pg_cron) running daily.
+Triggered via a Railway cron job running daily:
 
-**Notification dispatch**
-
-An Edge Function that sends notifications (email, Slack) when specific events occur — e.g., a commitment is assigned, a decision is scheduled, or a session is marked complete.
-
-```typescript
-// supabase/functions/notify/index.ts
-// Triggered via a Postgres webhook on INSERT/UPDATE
+```bash
+python manage.py auto_roll_commitments
 ```
+
+### Notification dispatch
+
+A management command (or Celery task, if needed) that sends notifications when specific events occur — e.g., a commitment is assigned, a decision is scheduled, or a session is marked complete.
 
 ## Migration strategy
 
-All database changes are managed via Supabase migrations:
+All database changes are managed via Django migrations:
 
 ```bash
-# Create a new migration
-supabase migration new add_teams_table
+# Create a new migration after model changes
+python manage.py makemigrations
 
-# Apply migrations locally
-supabase db reset
+# Apply migrations
+python manage.py migrate
 
-# Push to production
-supabase db push
+# Create a custom data migration
+python manage.py makemigrations --empty app_name -n description
 ```
 
-Migration files live in `supabase/migrations/` and are version-controlled in Git.
+Migration files live in each app's `migrations/` directory and are version-controlled in Git. Railway runs `python manage.py migrate` automatically on deploy.
