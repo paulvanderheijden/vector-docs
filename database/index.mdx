@@ -1,0 +1,41 @@
+---
+title: "Database Overview"
+description: "PostgreSQL database architecture for Vector."
+---
+
+Vector uses **PostgreSQL** hosted on **Railway** as its primary data store. The schema is managed entirely through Django's migration framework — all table definitions, constraints, and indexes are version-controlled and reversible.
+
+## Architecture
+
+```
+Django REST API (Railway) → PostgreSQL (Railway)
+```
+
+Django models define the schema. Migrations are generated with `python manage.py makemigrations` and applied with `python manage.py migrate`. There is no raw SQL outside of triggers and functions documented in [Background Jobs & Triggers](/backend/database-functions).
+
+## Key conventions
+
+| Convention | Detail |
+|---|---|
+| **Primary keys** | UUID (`uuid4`), set as default on all models |
+| **Timestamps** | `created_at` and `updated_at` on all models via `TimeStampedModel` base |
+| **Soft deletes** | Workspace members are never hard-deleted — `is_active = False` instead |
+| **Workspace scoping** | All domain tables include a `workspace_id` foreign key |
+| **Naming** | Snake-case table and column names (Django default) |
+
+## Sections
+
+<CardGroup cols={2}>
+  <Card title="Domain Model" icon="diagram-project" href="/domain/schema">
+    Conceptual schema — entities, fields, and status enums.
+  </Card>
+  <Card title="Relationships" icon="link" href="/domain/relationships">
+    How entities relate — foreign keys, join tables, and cardinality.
+  </Card>
+  <Card title="Database Tables" icon="database" href="/backend/database-tables">
+    Complete table definitions — columns, types, constraints, and indexes.
+  </Card>
+  <Card title="Background Jobs & Triggers" icon="bolt" href="/backend/database-functions">
+    Django management commands, signals, and Postgres triggers.
+  </Card>
+</CardGroup>

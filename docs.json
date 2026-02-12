@@ -80,11 +80,33 @@
             ]
           },
           {
-            "group": "Architecture",
+            "group": "Auth",
             "pages": [
               "backend/auth-and-tenancy",
-              "backend/auth-lifecycle",
+              "backend/auth-lifecycle"
+            ]
+          },
+          {
+            "group": "API",
+            "pages": [
+              "backend/api"
+            ]
+          },
+          {
+            "group": "Permissions",
+            "pages": [
               "backend/permissions"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "Database",
+        "groups": [
+          {
+            "group": "Overview",
+            "pages": [
+              "database/index"
             ]
           },
           {
@@ -95,7 +117,7 @@
             ]
           },
           {
-            "group": "Database",
+            "group": "Schema & Triggers",
             "pages": [
               "backend/database-tables",
               "backend/database-functions"

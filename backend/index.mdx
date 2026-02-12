@@ -85,13 +85,13 @@ const decisions = await fetch(`/api/v1/${workspaceSlug}/decisions/`, {
   <Card title="Auth & Multi-Tenancy" icon="lock" href="/backend/auth-and-tenancy">
     JWT authentication, workspace isolation, and the WorkOS roadmap.
   </Card>
+  <Card title="Auth Lifecycle" icon="arrows-rotate" href="/backend/auth-lifecycle">
+    The complete login, session, and token lifecycle from first visit to logout.
+  </Card>
+  <Card title="API Reference" icon="code" href="/backend/api">
+    REST API conventions, auth endpoints, and planned domain endpoints.
+  </Card>
   <Card title="Permissions" icon="user-shield" href="/backend/permissions">
     How permissions are derived from data relationships and enforced in Django.
-  </Card>
-  <Card title="Database Tables" icon="database" href="/backend/database-tables">
-    Complete table definitions — columns, types, constraints, and indexes.
-  </Card>
-  <Card title="Background Jobs & Triggers" icon="bolt" href="/backend/database-functions">
-    Django management commands, signals, and Postgres triggers.
   </Card>
 </CardGroup>

@@ -1,0 +1,272 @@
+---
+title: "API Reference"
+description: "REST API conventions, auth endpoints, and planned domain endpoints."
+---
+
+This page documents the Vector REST API — conventions, authentication endpoints (implemented), and workspace-scoped domain endpoints (planned).
+
+## Conventions
+
+| Convention | Detail |
+|---|---|
+| **Base URL** | `https://<host>` (Railway) |
+| **Format** | JSON request and response bodies |
+| **Auth header** | `Authorization: Bearer <access_token>` |
+| **Auth prefix** | `/auth/v1/` — user-level, no workspace scope |
+| **Domain prefix** | `/api/v1/{workspace_slug}/` — workspace-scoped |
+| **Error format** | `{ "error": "Human-readable message" }` |
+| **IDs** | UUIDs |
+
+### Versioning
+
+All endpoints are prefixed with `/v1/`. Auth and domain endpoints live under separate prefixes:
+
+```
+/auth/v1/login/                      # Auth — no workspace
+/api/v1/{workspace_slug}/decisions/  # Domain — workspace-scoped
+```
+
+### Error responses
+
+Errors return a JSON object with an `error` key:
+
+```json
+{
+  "error": "Invalid credentials"
+}
+```
+
+Standard HTTP status codes:
+
+| Status | Meaning |
+|---|---|
+| `200` | Success |
+| `201` | Created |
+| `205` | Reset Content (logout) |
+| `400` | Bad request — missing or invalid fields |
+| `401` | Unauthorized — missing or expired token |
+| `404` | Not found or access denied |
+
+---
+
+## Auth endpoints
+
+Auth endpoints are user-level and do not require a workspace slug.
+
+### `POST /auth/v1/login/`
+
+Authenticate with email and password. Returns JWT tokens and the user's workspaces.
+
+**Auth:** None
+
+**Request:**
+
+```json
+{
+  "email": "matt@mews.com",
+  "password": "..."
+}
+```
+
+**Response (200):**
+
+```json
+{
+  "access": "eyJhbGciOi...",
+  "refresh": "eyJhbGciOi...",
+  "workspaces": [
+    { "slug": "mews", "name": "Mews", "role": "admin", "created_at": "2026-01-15T10:00:00Z" }
+  ],
+  "active_workspace": "mews"
+}
+```
+
+**Errors:**
+
+| Status | Body | Cause |
+|---|---|---|
+| `400` | `{"error": "Email and password are required"}` | Missing field |
+| `401` | `{"error": "Invalid credentials"}` | Wrong email or password |
+
+---
+
+### `POST /auth/v1/logout/`
+
+Blacklist the refresh token so it can no longer be used to obtain new access tokens.
+
+**Auth:** Required
+
+**Request:**
+
+```json
+{
+  "refresh": "eyJhbGciOi..."
+}
+```
+
+**Response (205):**
+
+```json
+{
+  "message": "Logged out successfully"
+}
+```
+
+**Errors:**
+
+| Status | Body | Cause |
+|---|---|---|
+| `400` | `{"error": "Refresh token is required"}` | Missing field |
+| `400` | `{"error": "Invalid refresh token"}` | Token already blacklisted or malformed |
+
+---
+
+### `GET /auth/v1/me/`
+
+Return the current user's profile and active workspace.
+
+**Auth:** Required
+
+**Response (200):**
+
+```json
+{
+  "email": "matt@mews.com",
+  "name": "Matt Welle",
+  "active_workspace": "mews"
+}
+```
+
+---
+
+### `GET /auth/v1/workspaces/`
+
+List workspaces the current user belongs to, with their role in each.
+
+**Auth:** Required
+
+**Response (200):**
+
+```json
+[
+  { "slug": "mews", "name": "Mews", "role": "admin", "created_at": "2026-01-15T10:00:00Z" }
+]
+```
+
+---
+
+### `POST /auth/v1/workspaces/switch/`
+
+Set the user's active workspace. Updates `last_active_workspace` on the user record.
+
+**Auth:** Required
+
+**Request:**
+
+```json
+{
+  "workspace_slug": "mews"
+}
+```
+
+**Response (200):**
+
+```json
+{
+  "active_workspace": "mews",
+  "name": "Mews"
+}
+```
+
+**Errors:**
+
+| Status | Body | Cause |
+|---|---|---|
+| `400` | `{"error": "workspace_slug is required"}` | Missing field |
+| `404` | `{"error": "Workspace not found or access denied"}` | No active membership |
+
+---
+
+### `POST /auth/v1/token/`
+
+Standard SimpleJWT token obtain endpoint. Takes email and password, returns access and refresh tokens.
+
+**Auth:** None
+
+**Request:**
+
+```json
+{
+  "email": "matt@mews.com",
+  "password": "..."
+}
+```
+
+**Response (200):**
+
+```json
+{
+  "access": "eyJhbGciOi...",
+  "refresh": "eyJhbGciOi..."
+}
+```
+
+<Note>
+  Prefer `/auth/v1/login/` over this endpoint — it returns workspace info alongside the tokens.
+</Note>
+
+---
+
+### `POST /auth/v1/token/refresh/`
+
+Refresh an expired access token using a valid refresh token.
+
+**Auth:** None
+
+**Request:**
+
+```json
+{
+  "refresh": "eyJhbGciOi..."
+}
+```
+
+**Response (200):**
+
+```json
+{
+  "access": "eyJhbGciOi..."
+}
+```
+
+---
+
+## Domain endpoints (planned)
+
+Domain endpoints follow a standard REST pattern, scoped to a workspace via the URL slug. These are **not yet implemented** — the URL shapes below document the planned API surface.
+
+### URL pattern
+
+```
+GET    /api/v1/{workspace_slug}/{resource}/          # List
+POST   /api/v1/{workspace_slug}/{resource}/          # Create
+GET    /api/v1/{workspace_slug}/{resource}/{id}/      # Retrieve
+PUT    /api/v1/{workspace_slug}/{resource}/{id}/      # Update
+DELETE /api/v1/{workspace_slug}/{resource}/{id}/      # Delete
+```
+
+All domain endpoints require authentication and `HasWorkspaceAccess` permission. Querysets are automatically scoped to the workspace via `WorkspaceScopedViewSetMixin`.
+
+### Planned resources
+
+| Resource | URL prefix | Notes |
+|---|---|---|
+| **Circles** | `/api/v1/{slug}/circles/` | Forums for recurring sessions |
+| **Sessions** | `/api/v1/{slug}/sessions/` | Meetings within a circle |
+| **Decisions** | `/api/v1/{slug}/decisions/` | Direction-setting items |
+| **Commitments** | `/api/v1/{slug}/commitments/` | Execution-tracking items |
+| **Initiatives** | `/api/v1/{slug}/initiatives/` | Strategic workstreams |
+| **Projects** | `/api/v1/{slug}/projects/` | Tactical delivery units |
+| **Updates** | `/api/v1/{slug}/updates/` | Health updates for initiatives/projects |
+
+Each resource will be implemented as a DRF `ModelViewSet` with the `WorkspaceScopedViewSetMixin` and `HasWorkspaceAccess` permission class. See [Auth & Multi-Tenancy](/backend/auth-and-tenancy#workspace-isolation-via-django) for details on the scoping mechanism.
