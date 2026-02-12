@@ -11,10 +11,10 @@ description: "Overview of all screens in the Vector frontend."
 | **My Items** | `/my-items` | `MyItems` | User's assigned decisions and commitments with tab switching |
 | **Strategy** | `/strategy` | `Strategy` | Editable markdown strategy document with auto-generated table of contents |
 | **Circles List** | `/circles` | `CirclesList` | All circles with membership status, purpose, cadence, and member avatars |
-| **Circle Decisions** | `/circles/:slug/decisions` | `CircleView` | Circle's decisions, filterable by all/open, with session links |
-| **Circle Commitments** | `/circles/:slug/commitments` | `CircleView` | Circle's commitments with owner, due date, and status |
-| **Decision Detail** | `/circles/:slug/decisions/:decisionSlug` | `DecisionDetail` | Single-page decision view with always-open sidebar |
-| **Commitment Review** | `/circles/:slug/commitments/:commitmentSlug` | `CommitmentReview` | Commitment view with overview and activity tabs |
+| **Circle Decisions** | `/circles/:slug/decisions` | `CircleDecisions` | Circle's decisions, filterable by open/closed, with session links |
+| **Circle Commitments** | `/circles/:slug/commitments` | `CircleCommitments` | Circle's commitments with owner, due date, and status |
+| **Decision Detail** | `/circles/:slug/decisions/:decisionSlug` | `DecisionDetail` | Single-page decision view with inline properties |
+| **Commitment Detail** | `/circles/:slug/commitments/:commitmentSlug` | `CommitmentDetail` | Single-page commitment view with inline properties |
 | **Sessions List** | `/circles/:slug/sessions` | `SessionsList` | Paginated list of circle sessions (also `/upcoming` and `/previous` variants) |
 | **Session Detail** | `/circles/:slug/sessions/:sessionNumber` | `SessionDetail` | Meeting workspace with decision agenda, commitment review, and notes editor |
 | **Initiatives List** | `/initiatives` | `InitiativesList` | Filterable list of initiatives with status tabs (active/planned/completed) |
@@ -26,7 +26,7 @@ description: "Overview of all screens in the Vector frontend."
 
 ### Inbox
 
-The landing page. Shows all decisions with status "Proposed" from circles the current user belongs to in the active workspace. Circle filter tabs at the top allow narrowing to a specific circle. Empty state when no proposed decisions exist.
+The landing page. Shows all decisions with status "Requested" from circles the current user belongs to in the active workspace. Circle filter tabs at the top allow narrowing to a specific circle. Empty state when no proposed decisions exist.
 
 ### My Items
 
@@ -65,33 +65,29 @@ The commitment tracking view for a circle. Shows all commitments belonging to th
 
 ### Decision Detail
 
-Single-page view for a single decision with an always-open right sidebar (288px). No tabs — all content on one scrollable page.
+Single-page view for a single decision. No tabs, no sidebar — all content on one scrollable page with inline properties.
 
-**Main content (top to bottom):**
+**Content (top to bottom):**
 1. **TextField** — editable decision statement
-2. **Rationale** — MarkdownEditor for the decision rationale
-3. **Discussion** — MarkdownEditor for session discussion notes
-4. **Summary** — read-only text showing the decision statement
-5. **Notify requestor** — checkbox to share the summary with the requestor (persistent field)
-6. **Commitments** — CommitmentsTable showing linked commitments
+2. **PropertiesRow** (inline) — status (editable StatusField), submitted date (DateField with date + age), requested by (PersonField), circle (CircleField), sponsor (nullable PersonField), owner (nullable PersonField)
+3. **Description** — MarkdownEditor
+4. **Discussion and outcome** — MarkdownEditor
+5. **Summary for requestor** — MarkdownEditor
+6. **Commitments** — EntityList showing linked commitments with status + owner
 7. **Activity** — ChangeLog feed
 
-**Always-open sidebar:**
-- Status (editable StatusField)
-- Requested by (read-only PersonField with name, title="Requested by")
-- Age (color-coded)
-- Circle (link)
-- Sponsor (nullable PersonField — shows "Add Sponsor" placeholder when unset, editable with "No Sponsor" clear option)
-- Owner (nullable PersonField — shows "Add Owner" placeholder when unset, editable with "No Owner" clear option)
+### Commitment Detail
 
-### Commitment Review
+Single-page view for a single commitment. No tabs, no sidebar — inline properties.
 
-Detail view for a single commitment. Two tabs:
+**Content (top to bottom):**
+1. **Alert banner** — rolled (red) or at-risk (amber) status warning
+2. **TextField** — editable commitment outcome
+3. **PropertiesRow** (inline) — status (StatusField), due date (DateField), owner (PersonField), circle (CircleField)
+4. **Linked Decision** — card with decision ref, statement, status, and circle
+5. **Activity** — ChangeLog feed
 
-- **Overview** — alert banner for rolled/at-risk status, editable outcome (TextField), properties row (StatusField, due date, owner, circle), linked decision card
-- **Activity** — changelog feed
-
-Right sidebar mirrors properties. Header includes a "Re-commit?" button when status is Rolled or At risk.
+Header includes a "Re-commit?" button when status is Rolled or At risk.
 
 ### Sessions List
 
@@ -105,22 +101,21 @@ Table columns: session number, title (with badge), date, decision count, commitm
 
 Exactly one session per circle can carry each badge:
 
-- **Previous** (green badge) — the last session in the past with `completed=true`
-- **Current** (amber badge) — today's session, or the most recent past session with `completed=false` (i.e. a missed session). Only appears when one exists.
+- **Previous** (green badge) — the last session with status "Closed"
+- **Current** (amber badge) — today's session, or the most recent past session that is still "Open" (i.e. a missed session). Only appears when one exists.
 - **Upcoming** (blue badge) — the next session strictly in the future
-
-A session cannot be marked as completed when its date is in the future.
 
 ### Session Detail
 
 Meeting workspace designed to be open during a session:
 
 - **Editable title** — TextField styled as heading
-- **Properties row** — session date (DateField), status (Open/Closed/Cancelled via StatusField), chair (PersonField)
-- **Decisions section** — reorderable table (drag-and-drop), compact mode with combined status+owner column. Clicking a decision opens a 480px drawer on the right with rationale, implications, and discussion
+- **Properties row** — session date (DateField with calendar picker), status (Open/Closed/Cancelled via StatusField), chair (PersonField)
+- **Decisions section** — reorderable table (drag-and-drop), compact mode with combined status+owner column. Clicking a decision opens a 480px drawer on the right with description, discussion, and summary
 - **Commitments section** — compact table with combined decision ref + owner column
 - **Meeting notes** — TipTap markdown editor
-- **Closed/Cancelled lock** — when status is "Closed" or "Cancelled", a full-width `ReadOnlyBanner` appears below the header and all fields (title, date, chair, notes) become read-only. "Add Decision" / "Add Commitment" buttons and decision drawer are disabled. The status field stays editable so the user can re-open the session. Closed shows an amber banner; Cancelled shows a gray banner.
+- **Activity** — ChangeLog feed
+- **Closed/Cancelled lock** — when status is "Closed" or "Cancelled", a full-width `Banner` appears below the header and all fields (title, date, chair, notes) become read-only. "Add Decision" / "Add Commitment" buttons and decision drawer are disabled. The status field stays editable so the user can re-open the session. Closed shows `<Banner variant="warning" icon={Lock}>`; Cancelled shows `<Banner variant="muted">`.
 
 ### Initiatives List
 
@@ -130,7 +125,7 @@ Filterable list of initiatives for the active workspace. Status tabs (Active / P
 
 Strategic initiative overview. Three tabs:
 
-- **Overview** — clickable icon with picker popover (8 icon/color combos), editable title and summary (TextField), inline properties (status via StatusField, health/target via PropertySelect, owner via PersonField), description (MarkdownEditor)
+- **Overview** — clickable icon with picker popover (8 icon/color combos), editable title and summary (TextField), inline properties (status via StatusField, health via HealthField, owner via PersonField, target via TargetDateField), description (MarkdownEditor)
 - **Updates** — placeholder (coming soon)
 - **Projects** — table of linked projects with owner, health, decision/commitment counts
 
@@ -142,11 +137,13 @@ Projects for the active workspace, grouped by parent initiative. Group rows show
 
 ### Project Detail
 
-Execution detail for a project. Three tabs:
+Execution detail for a project. Single scrollable page with decisions and commitments sections. Right sidebar toggle.
 
-- **Overview** — alert banner if >2 rolled commitments, editable title and description (TextField), inline properties (health, visibility, owner via PropertySelect, parent initiative link)
-- **Decisions** — lightweight decision list (DecisionList)
-- **Commitments** — lightweight commitment list (CommitmentList)
+- **Alert banner** — if >2 rolled commitments
+- **Title and description** — editable via TextField
+- **Inline properties** — HealthField, visibility (PropertySelect), owner (PropertySelect), parent initiative (InitiativeField)
+- **Decisions** — EntityList with ref, title, circle name, and status
+- **Commitments** — EntityList with ref, outcome, status, and owner
 
 Right sidebar has: Properties, Signals (open commitments, rolled count, recent decisions), and People (private projects only — owner, subscribers, invite selector).
 

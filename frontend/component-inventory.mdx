@@ -38,17 +38,22 @@ Click-to-edit text field with full styling control via Tailwind utility props. R
 | `editable` | `boolean` | `true` | When `false`, click-to-edit is disabled and cursor-text is removed |
 | `className` | `string?` | — | Additional styling |
 
-**Used in:** DecisionDetail (title), CommitmentReview (title), InitiativeDetail (title, summary), ProjectDetail (title, description), SessionDetail (title)
+**Used in:** DecisionDetail (title), CommitmentDetail (title), InitiativeDetail (title, summary), ProjectDetail (title, description), SessionDetail (title)
 
-### PageHeader / PageHeaderRow / PageHeaderGroup
+### PageHeader / PageHeaderRow / PageHeaderGroup / HeaderBreadcrumb
 
 `src/components/PageHeader.tsx`
 
 Consistent page header layout injected into the App shell's sticky header area via the `usePageHeader` hook. `PageHeader` wraps rows, `PageHeaderRow` is a horizontal bar with `border-b`, `PageHeaderGroup` groups items with flex gap. Convention: Row 1 = title + tabs + actions, Row 2 = Filter + Display popovers.
 
-| Prop | Type | Description |
-|---|---|---|
-| `children` | ReactNode | Content |
+`HeaderBreadcrumb` takes children and inserts `>` dividers with `mx-1.5` spacing between them. Used in all detail page headers for consistent breadcrumb navigation.
+
+| Component | Props |
+|---|---|
+| `PageHeader` | `children: ReactNode` |
+| `PageHeaderRow` | `children: ReactNode`, `secondary?: boolean` |
+| `PageHeaderGroup` | `children?: ReactNode` |
+| `HeaderBreadcrumb` | `children: ReactNode` |
 
 **Used in:** every page
 
@@ -62,7 +67,7 @@ Right-side detail panel for entity detail pages. Fixed-position aside, 288px wid
 |---|---|
 | `SidebarSection` | `title: string`, `defaultOpen?: boolean` (default true), `children: ReactNode` |
 
-**Used in:** DecisionDetail, CommitmentReview, InitiativeDetail, ProjectDetail
+**Used in:** InitiativeDetail, ProjectDetail
 
 ### PropertiesRow (+ PropertiesRow.Item)
 
@@ -109,7 +114,7 @@ Renders a group of field components in either inline (horizontal) or stacked (ve
 
 Exports `usePropertiesEditable()` hook for field components to read the inherited editable state.
 
-**Used in:** DecisionDetail, CommitmentReview, InitiativeDetail, ProjectDetail (both inline and stacked)
+**Used in:** DecisionDetail (inline), CommitmentDetail (inline), InitiativeDetail (inline + stacked), ProjectDetail (inline + stacked), SessionDetail (inline)
 
 ### EntityIcon
 
@@ -170,14 +175,15 @@ First circle is expanded by default. Active route is highlighted.
 
 `src/components/DecisionsTable.tsx`
 
-Reusable decisions table wrapping `DataTable`. Decision-specific columns: ref, statement, circle, session link, owner avatar, status badge, age. Supports column visibility toggling, combined status+owner column for compact views, drag-and-drop reorder, and click-to-open handler.
+Reusable decisions table wrapping `DataTable`. Decision-specific columns: ref, statement, submitted (DateField with date + age), circle (CircleField pill), session link, owner/sponsor avatar, status badge. Supports column visibility toggling, combined status+owner column for compact views, drag-and-drop reorder, and click-to-open handler.
 
 | Prop | Type | Default | Description |
 |---|---|---|---|
 | `decisions` | `Decision[]` | required | Decision data |
 | `showCircle` | `boolean` | `true` | Show circle column |
 | `showSession` | `boolean` | `false` | Show session column |
-| `showAge` | `boolean` | `true` | Show age column |
+| `showSubmitted` | `boolean` | `true` | Show submitted column (date + age via DateField) |
+| `showOwner` | `boolean` | `true` | Show owner column |
 | `noDividers` | `boolean` | — | Remove row dividers |
 | `onReorder` | `(from, to) => void` | — | Enable drag-and-drop |
 | `onDecisionClick` | `(decision) => void` | — | Click handler (replaces Link) |
@@ -185,9 +191,9 @@ Reusable decisions table wrapping `DataTable`. Decision-specific columns: ref, s
 | `showDragHandle` | `boolean` | — | Show drag handle |
 | `showHeader` | `boolean` | — | Show table header |
 | `combinedStatusOwner` | `boolean` | `false` | Merge status + owner into single right-aligned column |
-| `personColumn` | `"owner"` / `"sponsor"` | `"owner"` | Which person to show in owner column |
+| `personColumn` | `"owner"` / `"sponsor"` | `"owner"` | Which person to show in person column |
 
-**Used in:** Inbox, MyItems, CircleDecisions, SessionDetail
+**Used in:** CircleDecisions, SessionDetail
 
 ### CommitmentsTable
 
@@ -206,69 +212,43 @@ Reusable commitments table wrapping `DataTable`. Commitment-specific columns: re
 | `showHeader` | `boolean` | — | Show table header |
 | `combinedStatusOwner` | `boolean` | `false` | Merge decision ref + owner into single column |
 
-**Used in:** MyItems, CircleCommitments, DecisionDetail, SessionDetail
+**Used in:** CircleCommitments, SessionDetail
 
-### DecisionList
+### EntityList
 
-`src/components/DecisionList.tsx`
+`src/components/EntityList.tsx`
 
-Lightweight decision list for project context. Compact row format: StatusField (icon + text), ref, title, circle name, age. Uses `ProjectDecision` type (from projects-store), not the main `Decision` type.
+Generic compact list for rendering entity rows with left/right content slots. Each item can optionally link to a detail page or trigger a click handler. Used where a full DataTable is overkill.
 
-| Prop | Type | Description |
+| Prop | Type | Default | Description |
+|---|---|---|---|
+| `items` | `EntityListItem[]` | required | List items |
+| `emptyMessage` | `string` | `"None yet."` | Empty state text |
+| `bordered` | `boolean` | `false` | Wrap in border + rounded container |
+
+`EntityListItem` shape:
+
+| Field | Type | Description |
 |---|---|---|
-| `decisions` | `ProjectDecision[]` | Decision data |
+| `id` | `string` | Unique key |
+| `left` | `ReactNode` | Left content (e.g. ref + title) |
+| `right` | `ReactNode?` | Right content (e.g. status + avatar) |
+| `href` | `string?` | Navigation target |
+| `onClick` | `() => void?` | Click handler (alternative to href) |
 
-**Used in:** ProjectDetail (decisions tab)
-
-### CommitmentList
-
-`src/components/CommitmentList.tsx`
-
-Lightweight commitment list for project context. Compact row format: status badge (fixed width), ref, outcome, owner first name, due label. Uses `ProjectCommitment` type (from projects-store).
-
-| Prop | Type | Description |
-|---|---|---|
-| `commitments` | `ProjectCommitment[]` | Commitment data |
-
-**Used in:** ProjectDetail (commitments tab)
+**Used in:** Inbox, MyItems (decisions, commitments), ProjectDetail (decisions, commitments), DecisionDetail (linked commitments)
 
 ### ChangeLog
 
 `src/components/ChangeLog.tsx`
 
-Activity feed. Each entry shows avatar, person name, action description, optional from/to values, and days ago.
+Activity timeline feed. Vertical line on the left with per-entry icon nodes varying by action type. Each entry shows icon/avatar, person name (font-medium), action description, optional bold from/to values, and "Xd ago" timestamp.
 
 | Prop | Type | Description |
 |---|---|---|
 | `entries` | `ChangeLogEntry[]` | Activity entries |
 
-**Used in:** DecisionDetail (activity section), CommitmentReview (activity tab)
-
-### HealthIndicator
-
-`src/components/HealthIndicator.tsx`
-
-Visual health status with colored icon (TrendingUp / TrendingUpDown / TrendingDown) and label. Optional staleness indicator ("Xd").
-
-| Prop | Type | Description |
-|---|---|---|
-| `health` | `InitiativeHealth` | `"on-track"` / `"at-risk"` / `"off-track"` |
-| `daysAgo` | `number?` | Days since last health update |
-
-**Used in:** InitiativesList, InitiativeDetail (project table), ProjectsList, ProjectDetail (sidebar)
-
-### VisibilityIndicator
-
-`src/components/VisibilityIndicator.tsx`
-
-Inline icon + label for public/private visibility. Eye / EyeOff icon.
-
-| Prop | Type | Description |
-|---|---|---|
-| `label` | `string` | Display label |
-| `visible` | `boolean` | Public or private |
-
-**Used in:** not yet used (available for future use)
+**Used in:** DecisionDetail (activity section), CommitmentDetail (activity section), SessionDetail (activity section)
 
 ---
 
@@ -280,16 +260,17 @@ Reusable field-type components with a consistent pattern: read-only by default, 
 
 `src/components/DateField.tsx`
 
-Contextual date display with tooltip. Shows relative text when ≤7 days ago ("today", "yesterday", "3 days ago"), absolute otherwise ("Jan 15, 2025"). Tooltip shows the opposite format.
+Contextual date display with tooltip. Shows relative text when ≤7 days ago ("today", "yesterday", "3 days ago"), absolute long format otherwise ("Feb 10, 2026"). Supports three display modes and an optional calendar picker for editable dates.
 
 | Prop | Type | Default | Description |
 |---|---|---|---|
 | `value` | `string \| Date` | required | Date value (ISO string or Date object) |
-| `editable` | `boolean` | `false` | Enable edit mode (not yet implemented) |
-| `prefix` | `string?` | — | Text prefix (e.g. "Updated") |
+| `display` | `"date"` / `"age"` / `"both"` | `"date"` | Display mode — "both" shows "Feb 10, 2026 · 5 days" |
+| `onChange` | `(date: Date) => void` | — | When provided, renders a calendar popover for date picking |
+| `prefix` | `string?` | — | Text prefix (e.g. "Due") |
 | `className` | `string?` | — | Additional styling |
 
-**Used in:** Strategy (header, last updated date), SessionDetail (session date)
+**Used in:** DecisionsTable (submitted column, `display="both"`), Inbox (EntityList, `display="both"`), MyItems (EntityList, `display="both"`), DecisionDetail (submitted date), SessionDetail (session date, drawer age), CommitmentDetail (due date)
 
 ### PersonField
 
@@ -322,7 +303,7 @@ Also exports a `getStatusConfig(type, value)` helper for external icon/color loo
 
 | Prop | Type | Default | Description |
 |---|---|---|---|
-| `type` | `StatusType` | required | Entity type: `"decision"`, `"commitment"`, or `"initiative"` |
+| `type` | `StatusType` | required | Entity type: `"decision"`, `"commitment"`, `"initiative"`, or `"session"` |
 | `value` | `string` | required | Current status value (e.g. `"Draft"`, `"Active"`, `"active"`) |
 | `editable` | `boolean` | `false` | Enable click-to-pick mode |
 | `onSelect` | `(value: string) => void` | — | Selection handler (returns the config map key) |
@@ -332,22 +313,26 @@ Also exports a `getStatusConfig(type, value)` helper for external icon/color loo
 
 | Type | Status | Icon | Color |
 |---|---|---|---|
-| decision | Draft | `Circle` | `text-muted-foreground` |
-| decision | Requested | `CircleDot` | `text-amber-600` |
-| decision | Scheduled | `CircleDashed` | `text-blue-600` |
-| decision | Taken | `CircleCheck` | `text-green-600` |
-| decision | Rolled | `RotateCcw` | `text-red-600` |
+| decision | Draft | `CircleDashed` | `text-muted-foreground` |
+| decision | Requested | `CircleHelp` | `text-amber-600` |
+| decision | Scheduled | `CircleChevronRight` | `text-blue-600` |
+| decision | Taken | `CircleCheckBig` | `text-green-600` |
+| decision | Rolled | `RotateCw` | `text-red-600` |
+| decision | Superseded | `CircleSlash` | `text-muted-foreground` |
 | commitment | Active | `CircleDot` | `text-blue-600` |
 | commitment | At risk | `CircleAlert` | `text-amber-600` |
 | commitment | Delivered | `CircleCheck` | `text-green-600` |
-| commitment | Rolled | `RotateCcw` | `text-red-600` |
+| commitment | Rolled | `RotateCw` | `text-red-600` |
 | initiative | active | `CircleDot` | `text-blue-600` |
 | initiative | planned | `Circle` | `text-muted-foreground` |
 | initiative | completed | `CircleCheck` | `text-green-600` |
+| session | Open | `Circle` | `text-blue-600` |
+| session | Closed | `CircleCheck` | `text-green-600` |
+| session | Cancelled | `CircleX` | `text-muted-foreground` |
 
 Lowercase aliases (`draft`, `requested`, `atRisk`, etc.) are supported for `ProjectDecisionStatus` / `ProjectCommitmentStatus` values.
 
-**Used in:** DecisionsTable (status cell, combined statusOwner cell), CommitmentsTable (status cell), DecisionDetail (sidebar: status), AgendaCard (commitment + decision statuses), SessionDetail (drawer decision status), CommitmentReview (inline + sidebar + linked decision), DecisionList (project decision status), InitiativeDetail (inline + sidebar status)
+**Used in:** DecisionsTable (status cell, combined statusOwner cell), CommitmentsTable (status cell), Inbox (EntityList), MyItems (EntityList), DecisionDetail (inline status), CommitmentDetail (inline status, linked decision), SessionDetail (properties, drawer decision status), InitiativeDetail (inline + sidebar status), ProjectDetail (EntityList items)
 
 ### SessionField
 
@@ -363,6 +348,96 @@ Session pill display: `EntityIcon` session icon + `#number` + relative date. Ren
 | `className` | `string?` | — | Additional styling |
 
 **Used in:** DecisionsTable (session cell)
+
+### DecisionField
+
+`src/components/DecisionField.tsx`
+
+Decision entity pill: EntityIcon (decision) + ref label + statement (tooltip for full text). Renders as `Link` when `circleSlug` and `decisionSlug` are provided, otherwise `span`. Supports `inline` prop for pill styling.
+
+| Prop | Type | Default | Description |
+|---|---|---|---|
+| `refLabel` | `string` | required | Decision ref (e.g. "D-1") |
+| `statement` | `string` | required | Decision statement |
+| `circleSlug` | `string?` | — | Circle slug for link |
+| `decisionSlug` | `string?` | — | Decision slug for link |
+| `inline` | `boolean` | `false` | Pill style (border, smaller text) |
+| `className` | `string?` | — | Additional styling |
+
+**Used in:** CommitmentsTable (decision column), CommitmentDetail (sidebar)
+
+### CommitmentField
+
+`src/components/CommitmentField.tsx`
+
+Commitment entity pill: EntityIcon (commitment) + ref label + outcome (tooltip for full text). Same pattern as DecisionField.
+
+| Prop | Type | Default | Description |
+|---|---|---|---|
+| `refLabel` | `string` | required | Commitment ref (e.g. "C-1") |
+| `outcome` | `string` | required | Commitment outcome |
+| `circleSlug` | `string?` | — | Circle slug for link |
+| `commitmentSlug` | `string?` | — | Commitment slug for link |
+| `inline` | `boolean` | `false` | Pill style |
+| `className` | `string?` | — | Additional styling |
+
+**Used in:** DecisionsTable (linked commitments)
+
+### CircleField
+
+`src/components/CircleField.tsx`
+
+Circle display: colored circle icon + name. Renders as `Link` (to circle sessions page) by default; set `linked={false}` for static display.
+
+| Prop | Type | Default | Description |
+|---|---|---|---|
+| `circle` | `Circle` | required | Circle object |
+| `linked` | `boolean` | `true` | Render as link to circle sessions |
+| `inline` | `boolean` | `false` | Pill style |
+| `className` | `string?` | — | Additional styling |
+
+**Used in:** DecisionsTable (circle column), Inbox (EntityList), MyItems (EntityList), DecisionDetail (properties), CommitmentDetail (properties, linked decision)
+
+### InitiativeField
+
+`src/components/InitiativeField.tsx`
+
+Initiative display: colored icon (from initiative's `icon` + `iconColor`) + title. Renders as `Link` by default.
+
+| Prop | Type | Default | Description |
+|---|---|---|---|
+| `initiative` | `Initiative` | required | Initiative object |
+| `linked` | `boolean` | `true` | Render as link to initiative detail |
+| `inline` | `boolean` | `false` | Pill style |
+| `className` | `string?` | — | Additional styling |
+
+**Used in:** ProjectDetail (properties)
+
+### HealthField
+
+`src/components/HealthField.tsx`
+
+Health display with popover showing full update details. Accepts an `updateId` and looks up the Update entity. Shows colored icon (TrendingUp / TrendingUpDown / TrendingDown) + health label + "Xd ago" staleness. Click opens popover with author, date, and update content. Shows "No updates" with muted CircleDashed icon when no update exists.
+
+| Prop | Type | Default | Description |
+|---|---|---|---|
+| `updateId` | `string \| null` | — | Update ID to look up |
+| `inline` | `boolean` | `false` | Smaller text for compact contexts |
+
+**Used in:** InitiativesList, InitiativeDetail (properties), ProjectsList, ProjectDetail (properties + sidebar)
+
+### SectionHeading
+
+`src/components/SectionHeading.tsx`
+
+Section title with optional right-aligned action slot. Renders as a small heading with consistent spacing.
+
+| Prop | Type | Description |
+|---|---|---|
+| `children` | `ReactNode` | Heading text |
+| `action` | `ReactNode?` | Right-aligned action (e.g. button) |
+
+**Used in:** ProjectDetail, DecisionDetail, CommitmentDetail, SessionDetail
 
 ---
 
@@ -385,7 +460,7 @@ Inline property picker. Clickable trigger opens a popover with options. Each opt
 | `onSelect` | `(value) => void` | Selection handler |
 | `triggerClassName` | `string?` | Custom trigger styling |
 
-**Used in:** InitiativeDetail (health, target), ProjectDetail (health, visibility, owner), SessionDetail (Open/Closed status)
+**Used in:** InitiativeDetail (target), ProjectDetail (visibility, owner)
 
 ### MarkdownEditor
 
@@ -400,25 +475,54 @@ TipTap-based rich text editor with markdown serialization. BubbleMenu toolbar: b
 | `placeholder` | `string?` | — | Muted placeholder text shown when editor is empty |
 | `editable` | `boolean` | `true` | When `false`, editor is non-editable and BubbleMenu is hidden |
 
-**Used in:** Strategy (main content), DecisionDetail (description, discussion, summary), InitiativeDetail (description), SessionDetail (meeting notes)
+**Used in:** Strategy (main content), DecisionDetail (description, discussion, summary), CommitmentDetail (linked decision), InitiativeDetail (description), SessionDetail (meeting notes)
 
-### ReadOnlyBanner
+### Banner
 
-`src/components/ReadOnlyBanner.tsx`
+`src/components/Banner.tsx`
 
-Full-width banner with Lock icon. Used to indicate that a page is read-only. Default styling is amber (`bg-amber-50 text-amber-800`); override via `className` for variants (e.g. gray for cancelled sessions).
+Generic banner component with semantic variants and two placement modes. Replaces the old single-purpose `ReadOnlyBanner`.
+
+**Variants** — each has a default icon and color scheme:
+
+| Variant | Default Icon | Background | Text | Border (inline only) |
+|---|---|---|---|---|
+| `info` | `Info` | `bg-blue-50` | `text-blue-800` | `border-blue-200` |
+| `success` | `CircleCheck` | `bg-green-50` | `text-green-800` | `border-green-200` |
+| `warning` | `AlertTriangle` | `bg-amber-50` | `text-amber-800` | `border-amber-200` |
+| `error` | `AlertTriangle` | `bg-red-50` | `text-red-800` | `border-red-200` |
+| `muted` | `Lock` | `bg-muted` | `text-muted-foreground` | `border` |
+
+**Placement modes** controlled by `inline` prop:
+- `inline={false}` (default) — full-width, centered text, no border/rounding. For page-level banners above content (e.g. SessionDetail).
+- `inline={true}` — `rounded-md border`, left-aligned. For content-level alerts (e.g. ProjectDetail rolled warning, CommitmentDetail status alerts).
+
+Both modes share: `flex items-center gap-2 px-3 py-2 text-xs`, icon at `h-3.5 w-3.5 shrink-0`.
 
 ```tsx
-<ReadOnlyBanner>This session is closed. Re-open it to make changes.</ReadOnlyBanner>
-<ReadOnlyBanner className="bg-muted text-muted-foreground">This session was cancelled.</ReadOnlyBanner>
+{/* Page-level: session closed */}
+<Banner variant="warning" icon={Lock}>This session is closed. Re-open it to make changes.</Banner>
+{/* Page-level: session cancelled */}
+<Banner variant="muted">This session was cancelled.</Banner>
+{/* Inline: rolled commitments warning */}
+<Banner variant="error" inline className="mb-4">
+  Execution slipping — 3 rolled commitments. Consider rescoping or forcing a decision.
+</Banner>
+{/* Inline: at-risk commitment */}
+<Banner variant="warning" inline className="mb-4">
+  This commitment is at risk. The deadline is approaching and completion is uncertain.
+</Banner>
 ```
 
 | Prop | Type | Default | Description |
 |---|---|---|---|
+| `variant` | `"info" \| "success" \| "warning" \| "error" \| "muted"` | required | Semantic variant controlling colors and default icon |
 | `children` | `ReactNode` | required | Banner message content |
+| `icon` | `LucideIcon?` | — | Override the default icon for the variant |
+| `inline` | `boolean` | `false` | `true` = rounded+bordered content-level alert; `false` = full-width page-level banner |
 | `className` | `string?` | — | Additional styling |
 
-**Used in:** SessionDetail (shown when session status is Closed or Cancelled)
+**Used in:** SessionDetail (Closed/Cancelled lock banners), ProjectDetail (rolled commitments warning), CommitmentDetail (Rolled/At risk status alerts)
 
 ---
 
@@ -432,7 +536,7 @@ These are standard shadcn/ui components. Not documented individually here, but t
 | `Badge` | Session badges, misc labels (status badges replaced by `StatusField`) |
 | `Avatar` | Person display throughout the app |
 | `Button` | Actions, filters, toggles |
-| `Checkbox` | DecisionDetail (notify requestor) |
+| `Checkbox` | DataTable (row selection) |
 | `Popover` | Filter/Display dropdowns, PropertySelect, PersonSelector, icon picker |
 | `Select` | Filter dropdowns (health, owner), invite selector |
 | `Sidebar*` | AppSidebar |

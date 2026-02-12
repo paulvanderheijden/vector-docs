@@ -44,7 +44,7 @@ PageHeader (via usePageHeader)
     └── PageHeaderGroup: Display popover
 
 Page body
-└── DecisionsTable (noDividers)
+└── EntityList (ref + statement, StatusField + CircleField + DateField)
 ```
 
 ---
@@ -63,8 +63,8 @@ PageHeader (via usePageHeader)
     └── PageHeaderGroup: Display popover
 
 Page body (conditional on active tab)
-├── DecisionsTable (noDividers)           ← decisions tab
-└── CommitmentsTable (noDividers)         ← commitments tab
+├── EntityList (ref + statement, StatusField + CircleField + DateField)    ← decisions tab
+└── EntityList (ref + outcome, StatusField + CircleField + PersonField)    ← commitments tab
 ```
 
 ---
@@ -149,69 +149,56 @@ Page body
 
 ## Decision Detail `/circles/:slug/decisions/:decisionSlug`
 
-Single-page decision view with always-open right sidebar.
+Single-page decision view with inline properties (no sidebar).
 
 ```
 PageHeader (via usePageHeader)
 └── PageHeaderRow
     └── PageHeaderGroup
         ├── Circle icon
-        └── Breadcrumb: "Circle > Decisions > DEC-N" + statement
+        └── HeaderBreadcrumb: Circle > Decisions > DEC-N > statement
 
-Page body (max-w-800, mr-72 for sidebar)
+Page body (max-w-800)
 ├── TextField (editable, decision statement)
-├── "Rationale" → MarkdownEditor
-├── "Discussion" → MarkdownEditor
-├── "Summary" → read-only statement text
-├── Checkbox: "Notify [requestor name]"
-├── "Commitments" → CommitmentsTable (showCircle=false, noDividers)
+├── PropertiesRow (title="Properties", inline)
+│   ├── PropertiesRow.Item → StatusField (decision, editable)
+│   ├── PropertiesRow.Item → DateField (requestedDate, display="both")
+│   ├── PropertiesRow.Item → PersonField (requested by, read-only, showName)
+│   ├── PropertiesRow.Item → CircleField (circle)
+│   ├── PropertiesRow.Item → PersonField (sponsor, nullable, editable)
+│   └── PropertiesRow.Item → PersonField (owner, nullable, editable)
+├── "Description" → MarkdownEditor
+├── "Discussion and outcome" → MarkdownEditor
+├── "Summary for requestor" → MarkdownEditor
+├── "Commitments" → EntityList (linked commitments with status + owner)
 └── "Activity" → ChangeLog
-
-Sidebar (fixed right, 288px, always open)
-└── SidebarSection "Properties"
-    └── PropertiesRow (stacked)
-        ├── PropertiesRow.Item "Status" → StatusField (editable)
-        ├── PropertiesRow.Item "Requested" → PersonField (read-only, showName, title="Requested by")
-        ├── PropertiesRow.Item "Age" → colored text
-        ├── PropertiesRow.Item "Circle" → Link
-        ├── PropertiesRow.Item "Sponsor" → PersonField (nullable, editable, showName, title="Sponsor")
-        └── PropertiesRow.Item "Owner" → PersonField (nullable, editable, showName, title="Owner")
 ```
 
 ---
 
-## Commitment Review `/circles/:slug/commitments/:commitmentSlug`
+## Commitment Detail `/circles/:slug/commitments/:commitmentSlug`
 
-Commitment view with tabs (overview, activity) and right sidebar.
+Single-page commitment view with inline properties. No sidebar.
 
 ```
 PageHeader (via usePageHeader)
 └── PageHeaderRow
     ├── PageHeaderGroup
     │   ├── Circle icon
-    │   ├── Breadcrumb: "Circle > Commitments > COM-N" + outcome
-    │   └── Tab buttons: Overview | Activity
+    │   └── HeaderBreadcrumb: Circle > Commitments > COM-N > outcome
     └── PageHeaderGroup
-        ├── [Re-commit?] button (if rolled/at-risk)
-        └── Sidebar toggle
+        └── [Re-commit?] button (if rolled/at-risk)
 
-Page body (conditional on active tab)
-├── Overview tab (max-w-800)
-│   ├── Alert banner (rolled = red, at-risk = amber)
-│   ├── TextField (editable, commitment outcome)
-│   ├── PropertiesRow (title="Properties") → StatusField (commitment), due date, owner, circle
-│   └── "Linked Decision" → Link card with StatusField (decision)
-└── Activity tab (max-w-800)
-    └── ChangeLog
-
-DetailSidebar (fixed right, 288px, toggle)
-├── SidebarSection "Properties"
-│   └── PropertiesRow (stacked)
-│       ├── PropertiesRow.Item "Status" → StatusField (commitment)
-│       ├── PropertiesRow.Item "Due" → text
-│       ├── PropertiesRow.Item "Owner" → text
-│       └── PropertiesRow.Item "Circle" → Link
-└── SidebarSection "Linked Decision" → Link + StatusField (decision)
+Page body (max-w-800)
+├── Alert banner (rolled = red, at-risk = amber)
+├── TextField (editable, commitment outcome)
+├── PropertiesRow (title="Properties", inline)
+│   ├── PropertiesRow.Item → StatusField (commitment)
+│   ├── PropertiesRow.Item → DateField (due, prefix="Due")
+│   ├── PropertiesRow.Item → PersonField (owner, read-only, showName)
+│   └── PropertiesRow.Item → CircleField (circle)
+├── "Linked Decision" → Link card with StatusField (decision) + CircleField (inline)
+└── "Activity" → ChangeLog
 ```
 
 ---
@@ -241,35 +228,38 @@ Meeting workspace with decisions agenda, commitments review, notes editor, and d
 ```
 PageHeader (via usePageHeader)
 └── PageHeaderRow
-    └── PageHeaderGroup: circle icon + "Circle > Session N" + friendly date
+    └── PageHeaderGroup
+        ├── Circle icon
+        └── HeaderBreadcrumb: Circle > Session switcher popover (session number + friendly date)
 
 Page body (max-w-800)
 ├── TextField (editable session title, as h1)
 ├── PropertiesRow (title="Properties")
 │   ├── PropertiesRow.Item → DateField (session date)
-│   ├── PropertiesRow.Item → PropertySelect (Open / Closed)
+│   ├── PropertiesRow.Item → StatusField (session, editable)
 │   └── PropertiesRow.Item → PersonField (chair, editable, showName)
 ├── "Decisions" section
-│   ├── Section header + [Add Decision] button
+│   ├── SectionHeading + [Add Decision] button
 │   └── DecisionsTable
-│       (showCircle=false, showAge=false, showSelect=false,
+│       (showCircle=false, showSubmitted=false, showSelect=false,
 │        showDragHandle=false, showHeader=false, combinedStatusOwner,
 │        noDividers, onReorder, onDecisionClick → opens drawer)
 ├── "Commitments" section
-│   ├── Section header + [Add Commitment] button
+│   ├── SectionHeading + [Add Commitment] button
 │   └── CommitmentsTable
 │       (showCircle=false, showDecision=false, showSelect=false,
 │        showHeader=false, combinedStatusOwner, noDividers)
-└── "Meeting Notes" section
-    └── MarkdownEditor (session notes)
+├── "Meeting Notes" section
+│   └── MarkdownEditor (session notes)
+└── "Activity" → ChangeLog
 
 Decision drawer (fixed right, 480px, toggle on row click)
 ├── Drawer header: ref + statement + [open full] Link + [close] button
 └── Drawer content
-    ├── Properties row: StatusField (decision), age, owner, requested by
-    ├── "Rationale" → text
-    ├── "Implications" → bullet list
-    └── "Discussion" → text
+    ├── Properties row: StatusField (decision), DateField (age), owner/sponsor, requested by
+    ├── "Description" → text
+    ├── "Discussion" → text
+    └── "Summary" → text
 ```
 
 ---
@@ -289,7 +279,7 @@ PageHeader (via usePageHeader)
 
 Page body
 └── DataTable (direct usage, custom columns)
-    └── Columns: icon, title, PersonSelector (owner), target, projects count, HealthIndicator
+    └── Columns: icon, title, PersonField (owner), target, projects count, HealthField
 ```
 
 ---
@@ -302,7 +292,7 @@ Initiative detail with icon picker, editable properties, tabs (overview, updates
 PageHeader (via usePageHeader)
 └── PageHeaderRow
     ├── PageHeaderGroup
-    │   ├── Breadcrumb: "Initiatives >" + title
+    │   ├── HeaderBreadcrumb: Initiatives > title
     │   └── Tab buttons: Overview | Updates | Projects
     └── PageHeaderGroup
         ├── [Add project] button
@@ -315,22 +305,22 @@ Page body (conditional on active tab)
 │   ├── TextField (summary, as p)
 │   ├── PropertiesRow (title="Properties")
 │   │   ├── PropertiesRow.Item → StatusField (initiative, editable)
-│   │   ├── PropertiesRow.Item → PropertySelect (health)
-│   │   ├── PropertiesRow.Item → PropertySelect (owner)
-│   │   └── PropertiesRow.Item → PropertySelect (target quarter)
+│   │   ├── PropertiesRow.Item → HealthField
+│   │   ├── PropertiesRow.Item → PersonField (owner, editable)
+│   │   └── PropertiesRow.Item → TargetDateField
 │   └── "Description" → MarkdownEditor
 ├── Updates tab → placeholder
 └── Projects tab
     └── DataTable (direct usage, project columns)
-        └── Columns: title + Lock icon, PersonSelector (owner), HealthIndicator, decisions count, commitments count
+        └── Columns: title + Lock icon, PersonField (owner), HealthField, decisions count, commitments count
 
 DetailSidebar (fixed right, 288px, toggle)
 ├── SidebarSection "Properties"
 │   └── PropertiesRow (stacked)
 │       ├── PropertiesRow.Item "Status" → StatusField (initiative, editable)
-│       ├── PropertiesRow.Item "Health" → PropertySelect
-│       ├── PropertiesRow.Item "Owner" → PropertySelect
-│       └── PropertiesRow.Item "Target" → PropertySelect
+│       ├── PropertiesRow.Item "Health" → HealthField
+│       ├── PropertiesRow.Item "Owner" → PersonField (editable)
+│       └── PropertiesRow.Item "Target" → TargetDateField
 └── SidebarSection "Summary" → text
 ```
 
@@ -352,47 +342,43 @@ PageHeader (via usePageHeader)
 Page body
 └── DataTable (direct usage, grouped by initiativeId)
     ├── Group row: expand/collapse + initiative title + project count + [+] button
-    └── Columns: title + Lock icon, PersonSelector (owner), HealthIndicator, decisions count, commitments count
+    └── Columns: title + Lock icon, PersonField (owner), HealthField, decisions count, commitments count
 ```
 
 ---
 
 ## Project Detail `/projects/:projectId`
 
-Project detail with tabs (overview, decisions, commitments) and right sidebar.
+Project detail with decisions, commitments sections and toggleable right sidebar.
 
 ```
 PageHeader (via usePageHeader)
 └── PageHeaderRow
     ├── PageHeaderGroup
-    │   ├── Breadcrumb: "Projects >" + title
-    │   └── Tab buttons: Overview | Decisions | Commitments
+    │   └── HeaderBreadcrumb: Projects > title
     └── PageHeaderGroup
         ├── [Follow/Following] button (public projects, non-owner)
         └── Sidebar toggle
 
-Page body (conditional on active tab)
-├── Overview tab (max-w-800)
-│   ├── Alert banner (if >2 rolled commitments)
-│   ├── TextField (editable, project title)
-│   ├── TextField (description, as p)
-│   ├── PropertiesRow (title="Properties")
-│   │   ├── PropertiesRow.Item → PropertySelect (health)
-│   │   ├── PropertiesRow.Item → PropertySelect (visibility)
-│   │   ├── PropertiesRow.Item → PropertySelect (owner)
-│   │   └── PropertiesRow.Item → Link to parent initiative
-├── Decisions tab
-│   └── DecisionList
-└── Commitments tab
-    └── CommitmentList
+Page body (max-w-800)
+├── Alert banner (if >2 rolled commitments)
+├── TextField (editable, project title)
+├── TextField (description, as p)
+├── PropertiesRow (title="Properties")
+│   ├── PropertiesRow.Item → HealthField
+│   ├── PropertiesRow.Item → PropertySelect (visibility)
+│   ├── PropertiesRow.Item → PropertySelect (owner)
+│   └── PropertiesRow.Item → InitiativeField (parent initiative)
+├── "Decisions" → EntityList (ref + title, circle name + StatusField)
+└── "Commitments" → EntityList (ref + outcome, StatusField + PersonField)
 
 DetailSidebar (fixed right, 288px, toggle)
 ├── SidebarSection "Properties"
 │   └── PropertiesRow (stacked)
-│       ├── PropertiesRow.Item "Health" → HealthIndicator
+│       ├── PropertiesRow.Item "Health" → HealthField
 │       ├── PropertiesRow.Item "Visibility" → PropertySelect
 │       ├── PropertiesRow.Item "Owner" → PropertySelect
-│       └── PropertiesRow.Item "Initiative" → Link
+│       └── PropertiesRow.Item "Initiative" → InitiativeField
 ├── SidebarSection "Signals"
 │   └── PropertiesRow (stacked)
 │       ├── PropertiesRow.Item "Open" → commitment count
