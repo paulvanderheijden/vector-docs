@@ -150,9 +150,10 @@ Also exports the `EntityType` union type.
 
 Main navigation sidebar. Uses shadcn `Sidebar*` primitives + Radix `Collapsible`. All entity icons use `EntityIcon` component. Structure:
 
+- **Header** — workspace switcher (DropdownMenu with ChevronsUpDown). Lists workspaces the user belongs to; Check icon marks the active one. Switching navigates to `/`.
 - **Top-level links** — Inbox, My Items
 - **Workspace section** — Strategy, Initiatives, Projects, Circles
-- **Your Circles** — one collapsible per circle with sub-items:
+- **Your Circles** — one collapsible per circle (filtered by active workspace) with sub-items:
   - Sessions (Previous / Current (if exists) / Upcoming shortcuts)
   - Decisions
   - Commitments
@@ -316,6 +317,7 @@ Avatar-based person display with nullable support. Read-only shows avatar + opti
 | `showName` | `boolean` | `false` | Show person name next to avatar |
 | `title` | `string?` | — | Field label used in placeholder ("Add {title}") and clear option ("No {title}") |
 | `onSelect` | `(person \| null) => void` | — | Selection handler; passes `null` when "No {title}" is chosen |
+| `workspaceId` | `string?` | — | Scope picker dropdown to people in this workspace |
 | `className` | `string?` | — | Additional styling |
 
 When `title` is provided and the field is editable, the dropdown prepends a "No {title}" option that clears the selection.
@@ -460,3 +462,11 @@ These are standard shadcn/ui components. Not documented individually here, but t
 Allows pages to inject their header content into the App shell's sticky header via React Router's Outlet context. Accepts `pageTitle`, `headerContent` (JSX), and optional `breadcrumbs`.
 
 **Used in:** every page
+
+### useWorkspace
+
+`src/lib/workspace-context.tsx`
+
+Returns the active workspace context: `activeWorkspaceId`, `setActiveWorkspaceId`, `workspace` (current `Workspace` object), and `workspaces` (all workspaces the user has access to). Must be used within `WorkspaceProvider`.
+
+**Used in:** AppSidebar, Inbox, MyItems, InitiativesList, ProjectsList, Strategy

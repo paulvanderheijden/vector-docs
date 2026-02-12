@@ -9,21 +9,23 @@ Wraps all pages. Always rendered.
 
 ```
 App
-├── SidebarProvider
-│   ├── AppSidebar
-│   │   ├── Sidebar > SidebarHeader (workspace logo + name)
-│   │   └── SidebarContent
-│   │       ├── SidebarGroup: top links (Inbox, My Items)
-│   │       ├── Collapsible: Workspace (Strategy, Initiatives, Projects, Circles)
-│   │       └── Collapsible: Your Circles
-│   │           └── Collapsible (per circle)
-│   │               ├── Sessions > Previous / Current (if exists) / Upcoming
-│   │               ├── Decisions
-│   │               └── Commitments
-│   └── SidebarInset
-│       ├── [sticky] PageHeader (injected by current page via usePageHeader)
-│       └── ScrollArea
-│           └── <Outlet /> → current page
+├── WorkspaceProvider (personId={currentUser.id})
+│   └── SidebarProvider
+│       ├── AppSidebar
+│       │   ├── Sidebar > SidebarHeader
+│       │   │   └── DropdownMenu (workspace switcher: name + ChevronsUpDown)
+│       │   └── SidebarContent
+│       │       ├── SidebarGroup: top links (Inbox, My Items)
+│       │       ├── Collapsible: Workspace (Strategy, Initiatives, Projects, Circles)
+│       │       └── Collapsible: Your Circles (filtered by active workspace)
+│       │           └── Collapsible (per circle)
+│       │               ├── Sessions > Previous / Current (if exists) / Upcoming
+│       │               ├── Decisions
+│       │               └── Commitments
+│       └── SidebarInset
+│           ├── [sticky] PageHeader (injected by current page via usePageHeader)
+│           └── ScrollArea
+│               └── <Outlet /> → current page
 ```
 
 ---

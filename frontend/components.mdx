@@ -97,10 +97,10 @@ Centralized icon map for all domain entities. Maps each `EntityType` to its cano
 Navigation sidebar using shadcn `Sidebar*` primitives and Radix `Collapsible`. All entity icons use `EntityIcon`.
 
 **Structure:**
-- **Header** — workspace logo + name ("Mews")
+- **Header** — workspace switcher dropdown (DropdownMenu). Shows active workspace name + ChevronsUpDown icon. Dropdown lists all workspaces the current user belongs to with a Check icon on the active one. Switching workspace navigates to `/` and persists the selection in localStorage.
 - **Top links** — Inbox, My Items
 - **Workspace** (collapsible, default open) — Strategy, Initiatives, Projects, Circles
-- **Your Circles** (collapsible, default open) — one collapsible per user circle:
+- **Your Circles** (collapsible, default open) — one collapsible per user circle (filtered by active workspace):
   - Sessions — with nested Previous / Upcoming shortcuts (link to last completed or next upcoming session)
   - Decisions
   - Commitments
@@ -167,6 +167,18 @@ Two components handle inline editing:
 ### Friendly dates
 
 The `friendlyDate` helper (in SessionDetail) renders dates as "Today", "Tomorrow", "Yesterday", or "Mon DD" format for recent dates. Used in session breadcrumbs.
+
+### Workspace context
+
+`WorkspaceProvider` wraps the entire app and stores the active workspace ID in `localStorage`. Pages call `useWorkspace()` to get `activeWorkspaceId` and pass it to workspace-scoped data helpers (e.g. `getCirclesForWorkspace`, `getInitiativesForWorkspace`).
+
+```tsx
+const { activeWorkspaceId, setActiveWorkspaceId, workspace, workspaces } = useWorkspace()
+```
+
+- **List pages** filter data by `activeWorkspaceId` — each data store exposes workspace-scoped accessors.
+- **Detail pages** use ID-based lookups that search globally — IDs are unique across workspaces, so no filtering is needed.
+- **PersonField** and **ProjectField** accept an optional `workspaceId` prop to scope their picker dropdowns to the active workspace's people/projects.
 
 ### Age color thresholds
 

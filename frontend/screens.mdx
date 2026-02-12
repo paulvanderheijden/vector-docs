@@ -26,11 +26,11 @@ description: "Overview of all screens in the Vector frontend."
 
 ### Inbox
 
-The landing page. Shows all decisions with status "Proposed" from circles the current user belongs to. Circle filter tabs at the top allow narrowing to a specific circle. Empty state when no proposed decisions exist.
+The landing page. Shows all decisions with status "Proposed" from circles the current user belongs to in the active workspace. Circle filter tabs at the top allow narrowing to a specific circle. Empty state when no proposed decisions exist.
 
 ### My Items
 
-Personal view of the user's assigned work. Two tabs:
+Personal view of the user's assigned work in the active workspace. Two tabs:
 
 - **Decisions** — all decisions where the user is the owner, sponsor, or requestor. This is the only place Draft decisions appear (they are excluded from circle views).
 - **Commitments** — all commitments where the user is the owner
@@ -39,7 +39,7 @@ Tab counts shown in the tab labels.
 
 ### Strategy
 
-Full-width editable strategy document using the TipTap markdown editor. A sticky table of contents sidebar (desktop only) is auto-generated from H2/H3/H4 headings in the editor via a MutationObserver, with scroll-spy highlighting.
+Full-width editable strategy document using the TipTap markdown editor, scoped to the active workspace. A sticky table of contents sidebar (desktop only) is auto-generated from H2/H3/H4 headings in the editor via a MutationObserver, with scroll-spy highlighting.
 
 ### Circles List
 
@@ -124,7 +124,7 @@ Meeting workspace designed to be open during a session:
 
 ### Initiatives List
 
-Filterable list of initiatives. Status tabs (Active / Planned / Completed) at the top. Filter popover for health and owner. Table columns: icon, title, owner (PersonSelector avatar), target quarter, projects progress (completed/total), health indicator.
+Filterable list of initiatives for the active workspace. Status tabs (Active / Planned / Completed) at the top. Filter popover for health and owner. Table columns: icon, title, owner (PersonSelector avatar), target quarter, projects progress (completed/total), health indicator.
 
 ### Initiative Detail
 
@@ -138,7 +138,7 @@ Right sidebar mirrors properties.
 
 ### Projects List
 
-Projects grouped by parent initiative. Group rows show initiative title, project count, and expand/collapse toggle. Filter popover for team and health. Scope tabs: All Projects / My Projects. Table columns: title (with lock icon for private), owner (PersonSelector avatar), health, teams (TeamChips), active decision count, open commitment count.
+Projects for the active workspace, grouped by parent initiative. Group rows show initiative title, project count, and expand/collapse toggle. Filter popover for health. Scope tabs: All Projects / My Projects. Table columns: title (with lock icon for private), owner (PersonSelector avatar), health, active decision count, open commitment count.
 
 ### Project Detail
 
