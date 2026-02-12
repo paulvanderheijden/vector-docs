@@ -19,8 +19,8 @@ description: "Overview of all screens in the Vector frontend."
 | **Session Detail** | `/circles/:slug/sessions/:sessionNumber` | `SessionDetail` | Meeting workspace with decision agenda, commitment review, and notes editor |
 | **Initiatives List** | `/initiatives` | `InitiativesList` | Filterable list of initiatives with status tabs (active/planned/completed) |
 | **Initiative Detail** | `/initiatives/:initiativeId` | `InitiativeDetail` | Initiative overview with icon picker, editable properties, and projects table |
-| **Projects List** | `/projects` | `ProjectsList` | Projects grouped by initiative, filterable by team and health |
-| **Project Detail** | `/projects/:projectId` | `ProjectDetail` | Project detail with health, visibility, teams, decisions, and commitments |
+| **Projects List** | `/projects` | `ProjectsList` | Projects grouped by initiative, filterable by health |
+| **Project Detail** | `/projects/:projectId` | `ProjectDetail` | Project detail with health, visibility, decisions, and commitments |
 
 ## Screen details
 
@@ -132,22 +132,22 @@ Strategic initiative overview. Three tabs:
 
 - **Overview** — clickable icon with picker popover (8 icon/color combos), editable title and summary (TextField), inline properties (status via StatusField, health/target via PropertySelect, owner via PersonField), description (MarkdownEditor)
 - **Updates** — placeholder (coming soon)
-- **Projects** — table of linked projects with owner, health, teams, decision/commitment counts
+- **Projects** — table of linked projects with owner, health, decision/commitment counts
 
 Right sidebar mirrors properties.
 
 ### Projects List
 
-Projects for the active workspace, grouped by parent initiative. Group rows show initiative title, project count, and expand/collapse toggle. Filter popover for health. Scope tabs: All Projects / My Projects. Table columns: title (with lock icon for private), owner (PersonSelector avatar), health, active decision count, open commitment count.
+Projects for the active workspace, grouped by parent initiative. Group rows show initiative title, project count, and expand/collapse toggle. Filter popover for health. Scope tabs: All Projects / My Projects. Table columns: title (with lock icon for private), owner (PersonField avatar), health, active decision count, open commitment count.
 
 ### Project Detail
 
 Execution detail for a project. Three tabs:
 
-- **Overview** — alert banner if >2 rolled commitments, editable title and description (TextField), inline properties (health, visibility, owner via PropertySelect, parent initiative link), teams (TeamChips)
+- **Overview** — alert banner if >2 rolled commitments, editable title and description (TextField), inline properties (health, visibility, owner via PropertySelect, parent initiative link)
 - **Decisions** — lightweight decision list (DecisionList)
 - **Commitments** — lightweight commitment list (CommitmentList)
 
-Right sidebar has: Properties, Signals (open commitments, rolled count, recent decisions), Teams, and People (private projects only — owner, subscribers, invite selector).
+Right sidebar has: Properties, Signals (open commitments, rolled count, recent decisions), and People (private projects only — owner, subscribers, invite selector).
 
 Follow/Unfollow button in header for public projects where user is not the owner.

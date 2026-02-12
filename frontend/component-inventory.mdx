@@ -257,18 +257,6 @@ Visual health status with colored icon (TrendingUp / TrendingUpDown / TrendingDo
 
 **Used in:** InitiativesList, InitiativeDetail (project table), ProjectsList, ProjectDetail (sidebar)
 
-### TeamChips
-
-`src/components/TeamChips.tsx`
-
-Renders team names as outlined `Badge` components. Resolves team IDs to names via projects-store.
-
-| Prop | Type | Description |
-|---|---|---|
-| `teamIds` | `string[]` | Team IDs to display |
-
-**Used in:** InitiativeDetail (project table), ProjectsList, ProjectDetail (overview + sidebar)
-
 ### VisibilityIndicator
 
 `src/components/VisibilityIndicator.tsx`
@@ -441,12 +429,12 @@ These are standard shadcn/ui components. Not documented individually here, but t
 | Primitive | Notable usage |
 |---|---|
 | `DataTable` | Base for DecisionsTable, CommitmentsTable, and direct use in CirclesList, InitiativesList, ProjectsList, SessionsList, InitiativeDetail |
-| `Badge` | Team chips, session badges, misc labels (status badges replaced by `StatusField`) |
+| `Badge` | Session badges, misc labels (status badges replaced by `StatusField`) |
 | `Avatar` | Person display throughout the app |
 | `Button` | Actions, filters, toggles |
 | `Checkbox` | DecisionDetail (notify requestor) |
 | `Popover` | Filter/Display dropdowns, PropertySelect, PersonSelector, icon picker |
-| `Select` | Filter dropdowns (health, team, owner), invite selector |
+| `Select` | Filter dropdowns (health, owner), invite selector |
 | `Sidebar*` | AppSidebar |
 | `Collapsible` | AppSidebar circle sections, DetailSidebar sections |
 | `ScrollArea` | App shell main content area |

@@ -31,7 +31,7 @@ src/
 ├── hooks/               # usePageHeader, use-mobile
 └── lib/
     ├── mock-data.ts       # Decisions, commitments, circles, sessions, people
-    ├── projects-store.ts  # Initiatives, projects, teams (separate store)
+    ├── projects-store.ts  # Initiatives, projects (separate store)
     ├── workspace-context.tsx # Workspace provider + useWorkspace hook
     └── utils.ts           # cn() classname helper
 ```
@@ -49,7 +49,7 @@ src/
 ## Key architecture decisions
 
 - **No global state library** — pages use local `useState` with mock data imports. Property overrides are tracked per-page via a `Record<string, string>` pattern (`get`/`set` helpers).
-- **Two data stores** — `mock-data.ts` for decisions/commitments/circles/sessions, `projects-store.ts` for initiatives/projects/teams. These will converge when the backend is connected.
+- **Two data stores** — `mock-data.ts` for decisions/commitments/circles/sessions, `projects-store.ts` for initiatives/projects. These will converge when the backend is connected.
 - **Multi-workspace context** — `WorkspaceProvider` stores the active workspace ID in `localStorage` and exposes it via `useWorkspace()` hook. All list pages filter data by `activeWorkspaceId`. ID-based lookups (detail pages) remain global — IDs are unique across workspaces.
 - **Page header via Outlet context** — pages don't render their own headers. Instead they call `usePageHeader()` which passes header JSX up to the App shell via React Router's Outlet context. This keeps the sticky header outside the scroll area.
 - **Detail sidebar is per-page** — each detail page renders its own fixed-position `<aside>`. There is no shared DetailSidebar wrapper component; only the inner `SidebarSection` and `PropertiesRow` primitives are shared.

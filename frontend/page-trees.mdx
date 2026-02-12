@@ -322,7 +322,7 @@ Page body (conditional on active tab)
 ├── Updates tab → placeholder
 └── Projects tab
     └── DataTable (direct usage, project columns)
-        └── Columns: title + Lock icon, PersonSelector (owner), HealthIndicator, TeamChips, decisions count, commitments count
+        └── Columns: title + Lock icon, PersonSelector (owner), HealthIndicator, decisions count, commitments count
 
 DetailSidebar (fixed right, 288px, toggle)
 ├── SidebarSection "Properties"
@@ -338,7 +338,7 @@ DetailSidebar (fixed right, 288px, toggle)
 
 ## Projects List `/projects`
 
-Projects grouped by initiative, filterable by team and health.
+Projects grouped by initiative, filterable by health.
 
 ```
 PageHeader (via usePageHeader)
@@ -346,13 +346,13 @@ PageHeader (via usePageHeader)
 │   ├── PageHeaderGroup: "Projects" + All/My tabs + [+] button
 │   └── PageHeaderGroup: [New Project] button
 └── PageHeaderRow
-    ├── PageHeaderGroup: Filter popover (team Select, health Select, reset button)
+    ├── PageHeaderGroup: Filter popover (health Select, reset button)
     └── PageHeaderGroup: Display popover
 
 Page body
 └── DataTable (direct usage, grouped by initiativeId)
     ├── Group row: expand/collapse + initiative title + project count + [+] button
-    └── Columns: title + Lock icon, PersonSelector (owner), HealthIndicator, TeamChips, decisions count, commitments count
+    └── Columns: title + Lock icon, PersonSelector (owner), HealthIndicator, decisions count, commitments count
 ```
 
 ---
@@ -381,7 +381,6 @@ Page body (conditional on active tab)
 │   │   ├── PropertiesRow.Item → PropertySelect (visibility)
 │   │   ├── PropertiesRow.Item → PropertySelect (owner)
 │   │   └── PropertiesRow.Item → Link to parent initiative
-│   └── "Teams" → TeamChips
 ├── Decisions tab
 │   └── DecisionList
 └── Commitments tab
@@ -399,7 +398,6 @@ DetailSidebar (fixed right, 288px, toggle)
 │       ├── PropertiesRow.Item "Open" → commitment count
 │       ├── PropertiesRow.Item "Rolled" → rolled count
 │       └── PropertiesRow.Item "Dec. (14d)" → recent decision count
-├── SidebarSection "Teams" → TeamChips
 └── SidebarSection "People" (private projects only)
     ├── Owner row: Avatar + name + "Owner" Badge
     ├── Subscriber rows: Avatar + name + [remove] button
