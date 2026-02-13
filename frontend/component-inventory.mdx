@@ -141,6 +141,7 @@ Centralized icon map for all domain entities. Renders the canonical Lucide icon 
 | `circle` | `SquareUserRound` |
 | `initiative` | `Rocket` |
 | `project` | `Box` |
+| `strategy` | `Compass` |
 | `inbox` | `Inbox` |
 | `myItems` | `IterationCcw` |
 
@@ -156,7 +157,7 @@ Main navigation sidebar. Uses shadcn `Sidebar*` primitives + Radix `Collapsible`
 
 - **Header** — workspace switcher (DropdownMenu with ChevronsUpDown). Lists workspaces the user belongs to; Check icon marks the active one. Switching navigates to `/`.
 - **Top-level links** — Inbox, My Items
-- **Workspace section** — Initiatives, Projects, Circles
+- **Workspace section** — Strategy, Initiatives, Projects, Circles
 - **Your Circles** — one collapsible per circle (filtered by active workspace) with sub-items:
   - Sessions (Previous / Current (if exists) / Upcoming shortcuts)
   - Decisions
@@ -290,7 +291,7 @@ Avatar-based person display with nullable support. Read-only shows avatar + opti
 
 When `title` is provided and the field is editable, the dropdown prepends a "No {title}" option that clears the selection.
 
-**Used in:** DecisionsTable (owner/sponsor cell), CommitmentsTable (owner cell), DecisionDetail (sidebar: requested by, sponsor, owner), InitiativesList (owner cell), InitiativeDetail (project table), ProjectsList (owner cell), SessionDetail (chair)
+**Used in:** DecisionsTable (owner/sponsor cell), CommitmentsTable (owner cell), DecisionDetail (sidebar: requested by, sponsor, owner), InitiativesList (owner cell), InitiativeDetail (project table), ProjectsList (owner cell), SessionDetail (chair), Strategy (header, author)
 
 ### StatusField
 
@@ -489,7 +490,7 @@ TipTap-based rich text editor with markdown serialization. BubbleMenu toolbar: b
 | `placeholder` | `string?` | — | Muted placeholder text shown when editor is empty |
 | `editable` | `boolean` | `true` | When `false`, editor is non-editable and BubbleMenu is hidden |
 
-**Used in:** DecisionDetail (description, discussion, summary), CommitmentDetail (linked decision), InitiativeDetail (description), SessionDetail (meeting notes)
+**Used in:** Strategy (main content), DecisionDetail (description, discussion, summary), CommitmentDetail (linked decision), InitiativeDetail (description), SessionDetail (meeting notes)
 
 ### Banner
 
@@ -603,4 +604,4 @@ onChange={(v) => { set("description", v); debouncedSave({ description: v }) }}
 
 Returns the active workspace context: `activeWorkspaceId`, `setActiveWorkspaceId`, `workspace` (current `Workspace` object), `workspaces` (all workspaces the user has access to), and `basePath` (workspace-prefixed URL base, e.g. `/w/mews`). Must be used within `WorkspaceProvider`.
 
-**Used in:** AppSidebar, Inbox, MyItems, InitiativesList, ProjectsList, ProjectDetail, InitiativeDetail, CircleDecisions, CircleCommitments, SessionsList, SessionDetail, DecisionDetail, CommitmentDetail
+**Used in:** AppSidebar, Inbox, MyItems, InitiativesList, ProjectsList, ProjectDetail, InitiativeDetail, CircleDecisions, CircleCommitments, SessionsList, SessionDetail, DecisionDetail, CommitmentDetail, Strategy

@@ -41,6 +41,7 @@
             "group": "Playbook",
             "pages": [
               "playbook/index",
+              "playbook/strategy",
               "playbook/monitoring",
               "playbook/decisions-in-practice",
               "playbook/running-meetings",
@@ -88,8 +89,7 @@
           {
             "group": "API",
             "pages": [
-              "backend/api",
-              "backend/activity-events"
+              "backend/api"
             ]
           },
           {
@@ -117,7 +117,7 @@
             ]
           },
           {
-            "group": "Schema & Commands",
+            "group": "Schema & Triggers",
             "pages": [
               "backend/database-tables",
               "backend/database-functions"
