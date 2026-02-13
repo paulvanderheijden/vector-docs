@@ -18,22 +18,22 @@ Activity events power the **Activity** timeline shown on Decision, Commitment, a
 }
 ```
 
-| Field | Type | Description |
-|---|---|---|
-| `id` | `string` | UUID, generated server-side |
-| `personId` | `int` | PK of the user who performed the action |
-| `action` | `string` | Human-readable verb phrase (see catalog below) |
-| `fromValue` | `string?` | Previous value (for changes) |
-| `toValue` | `string?` | New value (for changes and assignments) |
-| `timestamp` | `string` | ISO 8601 datetime of the event |
+| Field       | Type      | Description                                    |
+| ----------- | --------- | ---------------------------------------------- |
+| `id`        | `string`  | UUID, generated server-side                    |
+| `personId`  | `int`     | PK of the user who performed the action        |
+| `action`    | `string`  | Human-readable verb phrase (see catalog below) |
+| `fromValue` | `string?` | Previous value (for changes)                   |
+| `toValue`   | `string?` | New value (for changes and assignments)        |
+| `timestamp` | `string`  | ISO 8601 datetime of the event                 |
 
 <Note>
-The frontend currently displays `daysAgo` (integer) instead of `timestamp`. This will be migrated to compute `daysAgo` from `timestamp` on the client side.
+  The frontend currently displays `daysAgo` (integer) instead of `timestamp`. This will be migrated to compute `daysAgo` from `timestamp` on the client side.
 </Note>
 
 ## Implementation approach
 
-Events are created **explicitly in serializer `create` / `update` methods** — not via Django signals. This keeps event generation predictable, allows easy access to `request.user` (the actor), and gives full control over which fields trigger events.
+Events are created **``explicitly in serializer create / update methods``** — not via Django signals. This keeps event generation predictable, allows easy access to `request.user` (the actor), and gives full control over which fields trigger events.
 
 ```python
 # In serializer.update():
@@ -53,66 +53,66 @@ instance.changelog = changelog
 
 ### Decision
 
-| Trigger | Action | `action` text | `fromValue` | `toValue` |
-|---|---|---|---|---|
-| **Create** | New decision created | `"created this decision"` | — | — |
-| **status** change | Status updated | `"changed status"` | old status | new status |
-| **requestedBy** change | Requestor assigned/changed | `"changed requestor"` | old person name | new person name |
-| **sponsor** change | Sponsor assigned/changed | `"changed sponsor"` | old person name | new person name |
-| **owner** change | Owner assigned/changed | `"changed owner"` | old person name | new person name |
-| **circle** change | Circle reassigned | `"moved to circle"` | old circle name | new circle name |
-| **rolled** set to `true` | Decision marked as rolled | `"marked as rolled"` | — | — |
-| **rolled** set to `false` | Roll flag cleared | `"cleared rolled flag"` | — | — |
-| statement change | — | *no event* | — | — |
-| description change | — | *no event* | — | — |
-| discussion change | — | *no event* | — | — |
-| summary change | — | *no event* | — | — |
-| requestedDate change | — | *no event* | — | — |
-| projects change | — | *no event* | — | — |
+| Trigger                   | Action                     | `action` text             | `fromValue`     | `toValue`       |
+| ------------------------- | -------------------------- | ------------------------- | --------------- | --------------- |
+| **Create**                | New decision created       | `"created this decision"` | —               | —               |
+| **status** change         | Status updated             | `"changed status"`        | old status      | new status      |
+| **requestedBy** change    | Requestor assigned/changed | `"changed requestor"`     | old person name | new person name |
+| **sponsor** change        | Sponsor assigned/changed   | `"changed sponsor"`       | old person name | new person name |
+| **owner** change          | Owner assigned/changed     | `"changed owner"`         | old person name | new person name |
+| **circle** change         | Circle reassigned          | `"moved to circle"`       | old circle name | new circle name |
+| **rolled** set to `true`  | —                          | _no event_                | —               | —               |
+| **rolled** set to `false` | —                          | _no event_                | —               | —               |
+| statement change          | —                          | _no event_                | —               | —               |
+| description change        | —                          | _no event_                | —               | —               |
+| discussion change         | —                          | _no event_                | —               | —               |
+| summary change            | —                          | _no event_                | —               | —               |
+| requestedDate change      | —                          | _no event_                | —               | —               |
+| projects change           | Project assigned/changed   | `"changed project"`       | —               | —               |
 
 ### Commitment
 
-| Trigger | Action | `action` text | `fromValue` | `toValue` |
-|---|---|---|---|---|
-| **Create** | New commitment created | `"created this commitment"` | — | — |
-| **status** change | Status updated | `"changed status"` | old status | new status |
-| **owner** change | Owner assigned/changed | `"changed owner"` | old person name | new person name |
-| **circle** change | Circle reassigned | `"moved to circle"` | old circle name | new circle name |
-| **due** change | Due date updated | `"changed due date"` | old due | new due |
-| **decision** change | Linked decision changed | `"linked to decision"` | — | decision ref |
-| **project** change | Project assigned/changed | `"changed project"` | old project title | new project title |
-| outcome change | — | *no event* | — | — |
-| description change | — | *no event* | — | — |
+| Trigger             | Action                   | `action` text               | `fromValue`     | `toValue`       |
+| ------------------- | ------------------------ | --------------------------- | --------------- | --------------- |
+| **Create**          | New commitment created   | `"created this commitment"` | —               | —               |
+| **status** change   | Status updated           | `"changed status"`          | old status      | new status      |
+| **owner** change    | Owner assigned/changed   | `"changed owner"`           | old person name | new person name |
+| **circle** change   | Circle reassigned        | `"moved to circle"`         | old circle name | new circle name |
+| **due** change      | Due date updated         | `"changed due date"`        | old due         | new due         |
+| **decision** change | Linked decision changed  | `"linked to decision"`      | —               | decision ref    |
+| **project** change  | Project assigned/changed | `"changed project"`         | —               | —               |
+| outcome change      | —                        | _no event_                  | —               | —               |
+| description change  | —                        | _no event_                  | —               | —               |
 
 ### Session
 
-| Trigger | Action | `action` text | `fromValue` | `toValue` |
-|---|---|---|---|---|
-| **Create** | New session created | `"created this session"` | — | — |
-| **status** change | Status updated | `"changed status"` | old status | new status |
-| **date** change | Date rescheduled | `"changed date"` | old date | new date |
-| **decision added** | Decision added to session | `"added decision"` | — | decision ref |
-| **decision removed** | Decision removed from session | `"removed decision"` | decision ref | — |
-| **commitment added** | Commitment added to session | `"added commitment"` | — | commitment ref |
-| **commitment removed** | Commitment removed from session | `"removed commitment"` | commitment ref | — |
-| title change | — | *no event* | — | — |
-| notes change | — | *no event* | — | — |
+| Trigger                | Action                          | `action` text            | `fromValue`    | `toValue`      |
+| ---------------------- | ------------------------------- | ------------------------ | -------------- | -------------- |
+| **Create**             | New session created             | `"created this session"` | —              | —              |
+| **status** change      | Status updated                  | `"changed status"`       | old status     | new status     |
+| **date** change        | Date rescheduled                | `"changed date"`         | old date       | new date       |
+| **decision added**     | Decision added to session       | `"added decision"`       | —              | decision ref   |
+| **decision removed**   | Decision removed from session   | `"removed decision"`     | decision ref   | —              |
+| **commitment added**   | Commitment added to session     | `"added commitment"`     | —              | commitment ref |
+| **commitment removed** | Commitment removed from session | `"removed commitment"`   | commitment ref | —              |
+| title change           | —                               | _no event_               | —              | —              |
+| notes change           | —                               | _no event_               | —              | —              |
 
 ### Entities without activity timelines
 
 The following entities do **not** have a `changelog` field and do not generate activity events:
 
-| Entity | Reason |
-|---|---|
-| Circle | Admin-level config — changes are infrequent and not user-facing |
-| Initiative | No detail-page activity timeline in V1 |
-| Project | No detail-page activity timeline in V1 |
-| Update | Updates are themselves a form of activity record |
-| CircleMembership | Tracked implicitly through circle admin |
+| Entity           | Reason                                                          |
+| ---------------- | --------------------------------------------------------------- |
+| Circle           | Admin-level config — changes are infrequent and not user-facing |
+| Initiative       | No detail-page activity timeline in V1                          |
+| Project          | No detail-page activity timeline in V1                          |
+| Update           | Updates are themselves a form of activity record                |
+| CircleMembership | Tracked implicitly through circle admin                         |
 
 ## Design rationale
 
-**Why `changelog` JSON field instead of a separate `ActivityEvent` table?**
+**``Why changelog JSON field instead of a separate ActivityEvent table?``**
 
 - Events are always read together with their parent entity — no cross-entity queries needed
 - No joins required; the changelog loads with the entity in a single query
