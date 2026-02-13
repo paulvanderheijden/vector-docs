@@ -9,8 +9,6 @@ description: "Overview of all screens in the Vector frontend."
 |---|---|---|---|
 | **Inbox** | `/` | `Inbox` | Proposed decisions from the user's circles, filterable by circle |
 | **My Items** | `/my-items` | `MyItems` | User's assigned decisions and commitments with tab switching |
-| **Strategy** | `/strategy` | `Strategy` | Editable markdown strategy document with auto-generated table of contents |
-| **Circles List** | `/circles` | `CirclesList` | All circles with membership status, purpose, cadence, and member avatars |
 | **Circle Decisions** | `/circles/:slug/decisions` | `CircleDecisions` | Circle's decisions, filterable by open/closed, with session links |
 | **Circle Commitments** | `/circles/:slug/commitments` | `CircleCommitments` | Circle's commitments with owner, due date, and status |
 | **Decision Detail** | `/circles/:slug/decisions/:decisionSlug` | `DecisionDetail` | Single-page decision view with inline properties |
@@ -20,7 +18,7 @@ description: "Overview of all screens in the Vector frontend."
 | **Initiatives List** | `/initiatives` | `InitiativesList` | Filterable list of initiatives with status tabs (active/planned/completed) |
 | **Initiative Detail** | `/initiatives/:initiativeId` | `InitiativeDetail` | Initiative overview with icon picker, editable properties, and projects table |
 | **Projects List** | `/projects` | `ProjectsList` | Projects grouped by initiative, filterable by health |
-| **Project Detail** | `/projects/:projectId` | `ProjectDetail` | Project detail with health, visibility, decisions, and commitments |
+| **Project Detail** | `/projects/:projectId` | `ProjectDetail` | Project detail with health, decisions, and commitments |
 
 ## Screen details
 
@@ -36,10 +34,6 @@ Personal view of the user's assigned work in the active workspace. Two tabs:
 - **Commitments** — all commitments where the user is the owner
 
 Tab counts shown in the tab labels.
-
-### Strategy
-
-Full-width editable strategy document using the TipTap markdown editor, scoped to the active workspace. A sticky table of contents sidebar (desktop only) is auto-generated from H2/H3/H4 headings in the editor via a MutationObserver, with scroll-spy highlighting.
 
 ### Circles List
 
@@ -65,27 +59,28 @@ The commitment tracking view for a circle. Shows all commitments belonging to th
 
 ### Decision Detail
 
-Single-page view for a single decision. No tabs, no sidebar — all content on one scrollable page with inline properties.
+Single-page view for a single decision. No tabs, no sidebar — all content on one scrollable page with inline properties. All editable fields persist to the backend via PATCH on change (markdown fields are debounced).
 
 **Content (top to bottom):**
-1. **TextField** — editable decision statement
-2. **PropertiesRow** (inline) — status (editable StatusField), submitted date (DateField with date + age), requested by (PersonField), circle (CircleField), sponsor (nullable PersonField), owner (nullable PersonField)
-3. **Description** — MarkdownEditor
-4. **Discussion and outcome** — MarkdownEditor
-5. **Summary for requestor** — MarkdownEditor
+1. **TextField** — editable decision statement (saves on blur)
+2. **PropertiesRow** (inline) — status (editable StatusField, saves on select), submitted date (DateField with date + age), requested by (PersonField, read-only), circle (CircleField), sponsor (nullable PersonField, saves on select), owner (nullable PersonField, saves on select)
+3. **Description** — MarkdownEditor (debounced save)
+4. **Discussion and outcome** — MarkdownEditor (debounced save)
+5. **Summary for requestor** — MarkdownEditor (debounced save)
 6. **Commitments** — EntityList showing linked commitments with status + owner
 7. **Activity** — ChangeLog feed
 
 ### Commitment Detail
 
-Single-page view for a single commitment. No tabs, no sidebar — inline properties.
+Single-page view for a single commitment. No tabs, no sidebar — inline properties. Fields are only editable when accessed from a session with status "Open". All editable fields persist to the backend via PATCH on change.
 
 **Content (top to bottom):**
 1. **Alert banner** — rolled (red) or at-risk (amber) status warning
-2. **TextField** — editable commitment outcome
-3. **PropertiesRow** (inline) — status (StatusField), due date (DateField), owner (PersonField), circle (CircleField)
-4. **Linked Decision** — card with decision ref, statement, status, and circle
-5. **Activity** — ChangeLog feed
+2. **TextField** — editable commitment outcome (saves on blur, editable only when session is Open)
+3. **PropertiesRow** (inline) — status (StatusField, saves on select), due date (DateField with calendar picker, saves on select), owner (PersonField, saves on select), circle (CircleField)
+4. **Description** — MarkdownEditor (debounced save, editable only when session is Open)
+5. **Linked Decision** — card with decision ref, statement, status, and circle
+6. **Activity** — ChangeLog feed
 
 Header includes a "Re-commit?" button when status is Rolled or At risk.
 
@@ -107,44 +102,42 @@ Exactly one session per circle can carry each badge:
 
 ### Session Detail
 
-Meeting workspace designed to be open during a session:
+Meeting workspace designed to be open during a session. All editable fields persist to the backend via PATCH on change (notes are debounced):
 
-- **Editable title** — TextField styled as heading
-- **Properties row** — session date (DateField with calendar picker), status (Open/Closed/Cancelled via StatusField), chair (PersonField)
-- **Decisions section** — reorderable table (drag-and-drop), compact mode with combined status+owner column. Clicking a decision opens a 480px drawer on the right with description, discussion, and summary
+- **Editable title** — TextField styled as heading (saves on blur)
+- **Properties row** — session date (DateField with calendar picker, saves on select), status (Open/Closed/Cancelled via StatusField, saves on select), chair (PersonField, saves on select)
+- **Decisions section** — reorderable table (drag-and-drop, saves new order immediately), compact mode with combined status+owner column. Clicking a decision opens a 480px drawer on the right with description, discussion, and summary
 - **Commitments section** — compact table with combined decision ref + owner column
-- **Meeting notes** — TipTap markdown editor
+- **Meeting notes** — TipTap markdown editor (debounced save)
 - **Activity** — ChangeLog feed
 - **Closed/Cancelled lock** — when status is "Closed" or "Cancelled", a full-width `Banner` appears below the header and all fields (title, date, chair, notes) become read-only. "Add Decision" / "Add Commitment" buttons and decision drawer are disabled. The status field stays editable so the user can re-open the session. Closed shows `<Banner variant="warning" icon={Lock}>`; Cancelled shows `<Banner variant="muted">`.
 
 ### Initiatives List
 
-Filterable list of initiatives for the active workspace. Status tabs (Active / Planned / Completed) at the top. Filter popover for health and owner. Table columns: icon, title, owner (PersonSelector avatar), target quarter, projects progress (completed/total), health indicator.
+Filterable list of initiatives for the active workspace. Status tabs (Active / Planned / Completed) at the top. Filter popover for health and owner. Table columns: icon, title, owner (PersonField avatar), target quarter, projects progress (completed/total), health indicator.
 
 ### Initiative Detail
 
-Strategic initiative overview. Three tabs:
+Strategic initiative overview. All editable fields persist to the backend via PATCH on change (description is debounced). Three tabs:
 
-- **Overview** — clickable icon with picker popover (8 icon/color combos), editable title and summary (TextField), inline properties (status via StatusField, health via HealthField, owner via PersonField, target via TargetDateField), description (MarkdownEditor)
+- **Overview** — clickable icon with picker popover (8 icon/color combos, saves on select), editable title and summary (TextField, saves on blur), inline properties (status via StatusField saves on select, health via HealthField, owner via PersonField saves on select, target via TargetDateField saves on select), description (MarkdownEditor, debounced save)
 - **Updates** — placeholder (coming soon)
 - **Projects** — table of linked projects with owner, health, decision/commitment counts
 
-Right sidebar mirrors properties.
+Right sidebar mirrors properties (both sidebar and main content fields trigger the same save).
 
 ### Projects List
 
-Projects for the active workspace, grouped by parent initiative. Group rows show initiative title, project count, and expand/collapse toggle. Filter popover for health. Scope tabs: All Projects / My Projects. Table columns: title (with lock icon for private), owner (PersonField avatar), health, active decision count, open commitment count.
+Projects for the active workspace, grouped by parent initiative. Group rows show initiative title, project count, and expand/collapse toggle. Filter popover for health. Scope tabs: All Projects / My Projects. Table columns: title, owner (PersonField avatar), health, active decision count, open commitment count.
 
 ### Project Detail
 
-Execution detail for a project. Single scrollable page with decisions and commitments sections. Right sidebar toggle.
+Execution detail for a project. Single scrollable page with decisions and commitments sections. Right sidebar toggle. All editable fields persist to the backend via PATCH on change.
 
 - **Alert banner** — if >2 rolled commitments
-- **Title and description** — editable via TextField
-- **Inline properties** — HealthField, visibility (PropertySelect), owner (PropertySelect), parent initiative (InitiativeField)
+- **Title and description** — editable via TextField (saves on blur)
+- **Inline properties** — HealthField, owner (PersonField, saves on select), parent initiative (InitiativeField)
 - **Decisions** — EntityList with ref, title, circle name, and status
 - **Commitments** — EntityList with ref, outcome, status, and owner
 
-Right sidebar has: Properties, Signals (open commitments, rolled count, recent decisions), and People (private projects only — owner, subscribers, invite selector).
-
-Follow/Unfollow button in header for public projects where user is not the owner.
+Right sidebar has: Properties (health, owner saves on select, initiative) and Signals (open commitments, rolled count, recent decisions).

@@ -16,7 +16,7 @@ App
 │       │   │   └── DropdownMenu (workspace switcher: name + ChevronsUpDown)
 │       │   └── SidebarContent
 │       │       ├── SidebarGroup: top links (Inbox, My Items)
-│       │       ├── Collapsible: Workspace (Strategy, Initiatives, Projects, Circles)
+│       │       ├── Collapsible: Workspace (Initiatives, Projects, Circles)
 │       │       └── Collapsible: Your Circles (filtered by active workspace)
 │       │           └── Collapsible (per circle)
 │       │               ├── Sessions > Previous / Current (if exists) / Upcoming
@@ -65,26 +65,6 @@ PageHeader (via usePageHeader)
 Page body (conditional on active tab)
 ├── EntityList (ref + statement, StatusField + CircleField + DateField)    ← decisions tab
 └── EntityList (ref + outcome, StatusField + CircleField + PersonField)    ← commitments tab
-```
-
----
-
-## Strategy `/strategy`
-
-Editable strategy document with auto-generated table of contents sidebar.
-
-```
-PageHeader (via usePageHeader)
-├── PageHeaderRow
-│   ├── PageHeaderGroup: "Strategy"
-│   └── PageHeaderGroup: Display popover
-
-Page body
-├── Main column (max-w-800)
-│   ├── h1 "Strategy" (static heading)
-│   └── MarkdownEditor (strategy content)
-└── TOC sidebar (sticky right nav, lg+ only)
-    └── Heading links (extracted from editor DOM via useTableOfContents)
 ```
 
 ---
@@ -312,7 +292,7 @@ Page body (conditional on active tab)
 ├── Updates tab → placeholder
 └── Projects tab
     └── DataTable (direct usage, project columns)
-        └── Columns: title + Lock icon, PersonField (owner), HealthField, decisions count, commitments count
+        └── Columns: title, PersonField (owner), HealthField, decisions count, commitments count
 
 DetailSidebar (fixed right, 288px, toggle)
 ├── SidebarSection "Properties"
@@ -342,7 +322,7 @@ PageHeader (via usePageHeader)
 Page body
 └── DataTable (direct usage, grouped by initiativeId)
     ├── Group row: expand/collapse + initiative title + project count + [+] button
-    └── Columns: title + Lock icon, PersonField (owner), HealthField, decisions count, commitments count
+    └── Columns: title, PersonField (owner), HealthField, decisions count, commitments count
 ```
 
 ---
@@ -357,7 +337,6 @@ PageHeader (via usePageHeader)
     ├── PageHeaderGroup
     │   └── HeaderBreadcrumb: Projects > title
     └── PageHeaderGroup
-        ├── [Follow/Following] button (public projects, non-owner)
         └── Sidebar toggle
 
 Page body (max-w-800)
@@ -366,7 +345,6 @@ Page body (max-w-800)
 ├── TextField (description, as p)
 ├── PropertiesRow (title="Properties")
 │   ├── PropertiesRow.Item → HealthField
-│   ├── PropertiesRow.Item → PropertySelect (visibility)
 │   ├── PropertiesRow.Item → PropertySelect (owner)
 │   └── PropertiesRow.Item → InitiativeField (parent initiative)
 ├── "Decisions" → EntityList (ref + title, circle name + StatusField)
@@ -376,16 +354,11 @@ DetailSidebar (fixed right, 288px, toggle)
 ├── SidebarSection "Properties"
 │   └── PropertiesRow (stacked)
 │       ├── PropertiesRow.Item "Health" → HealthField
-│       ├── PropertiesRow.Item "Visibility" → PropertySelect
 │       ├── PropertiesRow.Item "Owner" → PropertySelect
 │       └── PropertiesRow.Item "Initiative" → InitiativeField
-├── SidebarSection "Signals"
-│   └── PropertiesRow (stacked)
-│       ├── PropertiesRow.Item "Open" → commitment count
-│       ├── PropertiesRow.Item "Rolled" → rolled count
-│       └── PropertiesRow.Item "Dec. (14d)" → recent decision count
-└── SidebarSection "People" (private projects only)
-    ├── Owner row: Avatar + name + "Owner" Badge
-    ├── Subscriber rows: Avatar + name + [remove] button
-    └── Select (invite person)
+└── SidebarSection "Signals"
+    └── PropertiesRow (stacked)
+        ├── PropertiesRow.Item "Open" → commitment count
+        ├── PropertiesRow.Item "Rolled" → rolled count
+        └── PropertiesRow.Item "Dec. (14d)" → recent decision count
 ```
