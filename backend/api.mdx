@@ -1,9 +1,9 @@
 ---
 title: "API Reference"
-description: "REST API conventions, auth endpoints, and planned domain endpoints."
+description: "REST API conventions, auth endpoints, and domain endpoints."
 ---
 
-This page documents the Vector REST API — conventions, authentication endpoints (implemented), and workspace-scoped domain endpoints (planned).
+This page documents the Vector REST API — conventions, authentication endpoints, and workspace-scoped domain endpoints.
 
 ## Conventions
 
@@ -13,17 +13,18 @@ This page documents the Vector REST API — conventions, authentication endpoint
 | **Format** | JSON request and response bodies |
 | **Auth header** | `Authorization: Bearer <access_token>` |
 | **Auth prefix** | `/auth/v1/` — user-level, no workspace scope |
-| **Domain prefix** | `/api/v1/{workspace_slug}/` — workspace-scoped |
+| **Domain prefix** | `/api/v1/workspaces/{workspace_slug}/` — workspace-scoped |
 | **Error format** | `{ "error": "Human-readable message" }` |
-| **IDs** | UUIDs |
+| **IDs** | Auto-increment integers (Django default) |
+| **Lookups** | Most resources use `slug` as the URL lookup field |
 
 ### Versioning
 
 All endpoints are prefixed with `/v1/`. Auth and domain endpoints live under separate prefixes:
 
 ```
-/auth/v1/login/                      # Auth — no workspace
-/api/v1/{workspace_slug}/decisions/  # Domain — workspace-scoped
+/auth/v1/login/                                          # Auth — no workspace
+/api/v1/workspaces/{workspace_slug}/decisions/           # Domain — workspace-scoped
 ```
 
 ### Error responses
@@ -131,6 +132,7 @@ Return the current user's profile and active workspace.
 
 ```json
 {
+  "id": 1,
   "email": "matt@mews.com",
   "name": "Matt Welle",
   "active_workspace": "mews"
@@ -241,32 +243,308 @@ Refresh an expired access token using a valid refresh token.
 
 ---
 
-## Domain endpoints (planned)
+## Domain endpoints
 
-Domain endpoints follow a standard REST pattern, scoped to a workspace via the URL slug. These are **not yet implemented** — the URL shapes below document the planned API surface.
+Domain endpoints follow a standard REST pattern, scoped to a workspace via the URL slug. All endpoints require authentication. Querysets are automatically scoped to the workspace via `WorkspaceScopedViewSetMixin`, which also verifies the user has an active membership in the workspace.
 
 ### URL pattern
 
 ```
-GET    /api/v1/{workspace_slug}/{resource}/          # List
-POST   /api/v1/{workspace_slug}/{resource}/          # Create
-GET    /api/v1/{workspace_slug}/{resource}/{id}/      # Retrieve
-PUT    /api/v1/{workspace_slug}/{resource}/{id}/      # Update
-DELETE /api/v1/{workspace_slug}/{resource}/{id}/      # Delete
+GET    /api/v1/workspaces/{workspace_slug}/{resource}/            # List
+POST   /api/v1/workspaces/{workspace_slug}/{resource}/            # Create
+GET    /api/v1/workspaces/{workspace_slug}/{resource}/{slug}/     # Retrieve
+PUT    /api/v1/workspaces/{workspace_slug}/{resource}/{slug}/     # Update
+PATCH  /api/v1/workspaces/{workspace_slug}/{resource}/{slug}/     # Partial update
+DELETE /api/v1/workspaces/{workspace_slug}/{resource}/{slug}/     # Delete
 ```
 
-All domain endpoints require authentication and `HasWorkspaceAccess` permission. Querysets are automatically scoped to the workspace via `WorkspaceScopedViewSetMixin`.
+### Resource summary
 
-### Planned resources
+| Resource | URL prefix | Lookup field | Notes |
+|---|---|---|---|
+| **People** | `people/` | `id` | Read-only — lists workspace members |
+| **Circles** | `circles/` | `slug` | Forums for recurring sessions |
+| **Sessions** | `sessions/` | `slug` | Meetings within a circle |
+| **Decisions** | `decisions/` | `slug` | Direction-setting items |
+| **Commitments** | `commitments/` | `slug` | Execution-tracking items |
+| **Initiatives** | `initiatives/` | `slug` | Strategic workstreams |
+| **Projects** | `projects/` | `slug` | Tactical delivery units |
+| **Updates** | `updates/` | `id` | Health updates for initiatives/projects |
 
-| Resource | URL prefix | Notes |
+---
+
+### People
+
+**`GET /api/v1/workspaces/{slug}/people/`** — List all workspace members.
+
+Read-only. Returns users who have an active `WorkspaceMember` record in the workspace.
+
+**Response item:**
+
+```json
+{
+  "id": 1,
+  "email": "matt.welle@mews.com",
+  "first_name": "Matt",
+  "last_name": "Welle",
+  "job_title": "CEO",
+  "avatar_url": "https://...",
+  "name": "Matt Welle",
+  "initials": "MW"
+}
+```
+
+---
+
+### Circles
+
+**`GET /api/v1/workspaces/{slug}/circles/`** — List all circles.
+
+**Response item:**
+
+```json
+{
+  "id": 1,
+  "name": "MT Weekly",
+  "slug": "mt-weekly",
+  "cadence": "Weekly",
+  "icon": "Users",
+  "icon_bg": "bg-blue-100 text-blue-600",
+  "members": [
+    {
+      "user": { "id": 1, "name": "Matt Welle", "initials": "MW", "avatar_url": "...", "job_title": "CEO" },
+      "is_chair": true
+    }
+  ],
+  "chair": { "id": 1, "name": "Matt Welle", "initials": "MW", "avatar_url": "...", "job_title": "CEO" }
+}
+```
+
+**Write fields:** `name`, `slug`, `cadence`, `icon`, `icon_bg`, `member_ids` (array of user IDs), `chair_id` (user ID).
+
+---
+
+### Decisions
+
+**`GET /api/v1/workspaces/{slug}/decisions/`** — List decisions.
+
+**Query parameters:**
+
+| Param | Type | Description |
 |---|---|---|
-| **Circles** | `/api/v1/{slug}/circles/` | Forums for recurring sessions |
-| **Sessions** | `/api/v1/{slug}/sessions/` | Meetings within a circle |
-| **Decisions** | `/api/v1/{slug}/decisions/` | Direction-setting items |
-| **Commitments** | `/api/v1/{slug}/commitments/` | Execution-tracking items |
-| **Initiatives** | `/api/v1/{slug}/initiatives/` | Strategic workstreams |
-| **Projects** | `/api/v1/{slug}/projects/` | Tactical delivery units |
-| **Updates** | `/api/v1/{slug}/updates/` | Health updates for initiatives/projects |
+| `circle` | string | Filter by circle slug |
+| `status` | string | Filter by status (`Draft`, `Requested`, `Scheduled`, `Taken`, `Rolled`, `Superseded`) |
+| `person` | integer | Filter by person ID (matches requestor, sponsor, or owner) |
+| `project` | string | Filter by project slug |
+| `exclude_draft` | any | Exclude decisions with status `Draft` |
 
-Each resource will be implemented as a DRF `ModelViewSet` with the `WorkspaceScopedViewSetMixin` and `HasWorkspaceAccess` permission class. See [Auth & Multi-Tenancy](/backend/auth-and-tenancy#workspace-isolation-via-django) for details on the scoping mechanism.
+**Response item:**
+
+```json
+{
+  "id": 1,
+  "ref": "D-1",
+  "statement": "Adopt new pricing model for enterprise tier",
+  "slug": "adopt-new-pricing-model",
+  "description": "...",
+  "discussion": "...",
+  "summary": "...",
+  "status": "Scheduled",
+  "rolled": false,
+  "requested_date": "2026-01-15",
+  "circle": { "id": 1, "name": "MT Weekly", "slug": "mt-weekly", "icon": "Users", "icon_bg": "..." },
+  "requested_by": { "id": 1, "name": "Matt Welle", "initials": "MW", "avatar_url": "...", "job_title": "CEO" },
+  "sponsor": { "id": 2, "name": "Richard Valtr", "initials": "RV", "avatar_url": "...", "job_title": "..." },
+  "owner": null,
+  "revisit_of": null,
+  "projects": [1, 3],
+  "changelog": [
+    { "action": "created", "person": "Matt Welle", "date": "2026-01-15" }
+  ]
+}
+```
+
+**Write fields:** `ref`, `statement`, `slug`, `description`, `discussion`, `summary`, `status`, `rolled`, `requested_date`, `circle_id`, `requested_by_id`, `sponsor_id`, `owner_id`, `revisit_of`, `project_ids` (array of project IDs), `changelog`.
+
+---
+
+### Commitments
+
+**`GET /api/v1/workspaces/{slug}/commitments/`** — List commitments.
+
+**Query parameters:**
+
+| Param | Type | Description |
+|---|---|---|
+| `circle` | string | Filter by circle slug |
+| `owner` | integer | Filter by owner user ID |
+| `status` | string | Filter by status (`Active`, `Delivered`, `Rolled`) |
+| `decision` | integer | Filter by decision ID |
+| `project` | string | Filter by project slug |
+
+**Response item:**
+
+```json
+{
+  "id": 1,
+  "ref": "C-1",
+  "outcome": "Deliver enterprise pricing proposal",
+  "slug": "deliver-enterprise-pricing-proposal",
+  "description": "...",
+  "status": "Active",
+  "due": "Q1 2026",
+  "circle": { "id": 1, "name": "MT Weekly", "slug": "mt-weekly", "icon": "...", "icon_bg": "..." },
+  "owner": { "id": 1, "name": "Matt Welle", "initials": "MW", "avatar_url": "...", "job_title": "CEO" },
+  "decision": { "id": 1, "ref": "D-1", "statement": "Adopt new pricing model..." },
+  "project": { "id": 3, "title": "Pricing Overhaul", "slug": "pricing-overhaul" },
+  "changelog": []
+}
+```
+
+**Write fields:** `ref`, `outcome`, `slug`, `description`, `status`, `due`, `circle_id`, `owner_id`, `decision_id`, `project_id`, `changelog`.
+
+---
+
+### Sessions
+
+**`GET /api/v1/workspaces/{slug}/sessions/`** — List sessions (ordered by date descending).
+
+**Query parameters:**
+
+| Param | Type | Description |
+|---|---|---|
+| `circle` | string | Filter by circle slug |
+
+**List response item:**
+
+```json
+{
+  "id": 1,
+  "number": 12,
+  "title": "MT Weekly #12",
+  "slug": "mt-weekly-12",
+  "date": "2026-02-10",
+  "status": "Closed",
+  "notes": "...",
+  "chair": { "id": 1, "name": "Matt Welle", "initials": "MW", "avatar_url": "...", "job_title": "CEO" },
+  "circle": { "id": 1, "name": "MT Weekly", "slug": "mt-weekly", "icon": "...", "icon_bg": "..." },
+  "decision_ids": [1, 3],
+  "commitment_ids": [2, 5],
+  "changelog": []
+}
+```
+
+**`GET /api/v1/workspaces/{slug}/sessions/{session_slug}/`** — Retrieve session detail.
+
+The detail endpoint returns an extended response with `decisions_detail` and `commitments_detail` — full nested decision and commitment objects in their session order.
+
+**Custom actions:**
+
+| Action | Method | URL | Body |
+|---|---|---|---|
+| Set decisions | `POST` | `sessions/{slug}/set-decisions/` | `{ "decision_ids": [1, 3, 5] }` |
+| Set commitments | `POST` | `sessions/{slug}/set-commitments/` | `{ "commitment_ids": [2, 4] }` |
+
+These replace the session's linked decisions/commitments and set their display order.
+
+**Write fields:** `number`, `title`, `slug`, `date`, `status`, `notes`, `chair_id`, `circle_id`, `changelog`.
+
+---
+
+### Initiatives
+
+**`GET /api/v1/workspaces/{slug}/initiatives/`** — List initiatives.
+
+**Query parameters:**
+
+| Param | Type | Description |
+|---|---|---|
+| `status` | string | Filter by status (`planned`, `active`, `completed`) |
+
+**Response item:**
+
+```json
+{
+  "id": 1,
+  "title": "Revenue Growth",
+  "slug": "revenue-growth",
+  "summary": "...",
+  "description": "...",
+  "owner": { "id": 1, "name": "Matt Welle", "initials": "MW", "avatar_url": "...", "job_title": "CEO" },
+  "icon": "TrendingUp",
+  "icon_color": "text-green-600",
+  "target": "Q2 2026",
+  "status": "active",
+  "completed_project_count": 0,
+  "project_count": 3,
+  "worst_health": "at-risk"
+}
+```
+
+**Write fields:** `title`, `slug`, `summary`, `description`, `owner_id`, `icon`, `icon_color`, `target`, `status`.
+
+---
+
+### Projects
+
+**`GET /api/v1/workspaces/{slug}/projects/`** — List projects.
+
+**Query parameters:**
+
+| Param | Type | Description |
+|---|---|---|
+| `initiative` | string | Filter by initiative slug |
+
+**Response item:**
+
+```json
+{
+  "id": 1,
+  "title": "Enterprise Sales Pipeline",
+  "slug": "enterprise-sales-pipeline",
+  "description": "...",
+  "owner": { "id": 2, "name": "Richard Valtr", "initials": "RV", "avatar_url": "...", "job_title": "..." },
+  "initiative": { "id": 1, "title": "Revenue Growth", "slug": "revenue-growth" },
+  "health": "on-track",
+  "open_commitment_count": 2,
+  "active_decision_count": 1
+}
+```
+
+Computed fields:
+- `health` — derived from the project's most recent Update
+- `open_commitment_count` — commitments linked to this project with status `Active`
+- `active_decision_count` — decisions linked to this project excluding `Taken` and `Superseded`
+
+**Write fields:** `title`, `slug`, `description`, `owner_id`, `initiative_id`.
+
+---
+
+### Updates
+
+**`GET /api/v1/workspaces/{slug}/updates/`** — List health updates.
+
+**Query parameters:**
+
+| Param | Type | Description |
+|---|---|---|
+| `initiative` | integer | Filter by initiative ID |
+| `project` | integer | Filter by project ID |
+
+**Response item:**
+
+```json
+{
+  "id": 1,
+  "initiative": null,
+  "project": 3,
+  "author": { "id": 2, "name": "Richard Valtr", "initials": "RV", "avatar_url": "...", "job_title": "..." },
+  "date": "2026-02-01",
+  "health": "on-track",
+  "content": "Sprint completed on schedule. API integration tests passing."
+}
+```
+
+Each Update is linked to either an initiative or a project (exactly one must be set).
+
+**Write fields:** `initiative`, `project`, `author_id`, `date`, `health`, `content`.

@@ -77,7 +77,7 @@ localStorage.setItem('refresh_token', data.refresh);
 Every API request includes the access token in the `Authorization` header.
 
 ```
-GET /api/v1/mews/decisions/
+GET /api/v1/workspaces/mews/decisions/
 Authorization: Bearer eyJhbGciOi...
 ```
 
@@ -199,7 +199,7 @@ Content-Type: application/json
 1. On login: use `active_workspace` from the login response to set the initial workspace
 2. If `active_workspace` is `null` (no workspaces): show an onboarding/empty state
 3. On workspace switch: call the switch endpoint, update the stored slug, reload workspace-scoped data
-4. The workspace slug is included in all API URLs: `/api/v1/{workspace_slug}/...`
+4. The workspace slug is included in all API URLs: `/api/v1/workspaces/{workspace_slug}/...`
 
 ## 6. Fetching user info
 
@@ -214,6 +214,7 @@ Authorization: Bearer eyJhbGciOi...
 
 ```json
 {
+  "id": 1,
   "email": "matt@mews.com",
   "name": "Matt Welle",
   "active_workspace": "mews"

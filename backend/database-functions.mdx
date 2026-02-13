@@ -1,142 +1,65 @@
 ---
-title: "Background Jobs & Triggers"
-description: "Django management commands, signals, and Postgres triggers for custom logic."
+title: "Background Jobs & Commands"
+description: "Django management commands, model validation, and planned automation."
 ---
 
 Most of Vector's behavior is handled by DRF viewsets and serializers. The items below cover custom logic that runs outside normal request handling.
 
-## Postgres triggers
+## Changelog as JSON
 
-Postgres triggers handle logic that must be enforced regardless of whether the change comes from Django or a direct database operation.
+Activity history for decisions, commitments, and sessions is stored as a `JSONField` directly on each entity. Each entry in the array follows this structure:
 
-### Auto-generate session numbers
-
-Each circle has its own independent session numbering starting at 1.
-
-```sql
-CREATE OR REPLACE FUNCTION generate_session_number()
-RETURNS trigger AS $$
-BEGIN
-  NEW.number := COALESCE(
-    (SELECT MAX(number) FROM sessions WHERE circle_id = NEW.circle_id),
-    0
-  ) + 1;
-  RETURN NEW;
-END;
-$$ LANGUAGE plpgsql;
-
-CREATE TRIGGER set_session_number
-  BEFORE INSERT ON sessions
-  FOR EACH ROW EXECUTE FUNCTION generate_session_number();
+```json
+{
+  "action": "status",
+  "person": "Matt Welle",
+  "date": "2026-02-10",
+  "from": "Scheduled",
+  "to": "Taken"
+}
 ```
 
-### Update `updated_at` timestamps
+Common action types: `created`, `status`, `sponsor`, `owner`, `assigned`, `due`.
 
-Shared trigger applied to all tables with an `updated_at` column. This acts as a safeguard alongside Django's `auto_now=True`.
+This approach was chosen over a separate `activity_events` table for simplicity — the changelog data is always read with its parent entity and doesn't need independent querying.
 
-```sql
-CREATE OR REPLACE FUNCTION update_updated_at()
-RETURNS trigger AS $$
-BEGIN
-  NEW.updated_at = now();
-  RETURN NEW;
-END;
-$$ LANGUAGE plpgsql;
-```
+## CamelCase JSON transformation
 
-Applied to: `workspaces`, `persons`, `circles`, `sessions`, `initiatives`, `projects`, `decisions`, `commitments`, `project_updates`.
+The API uses `djangorestframework-camel-case` to automatically convert between Python's `snake_case` (backend) and JavaScript's `camelCase` (frontend). This is configured globally in `REST_FRAMEWORK` settings:
 
-## Django model validation
+- **Renderers** — `CamelCaseJSONRenderer` transforms response keys to camelCase
+- **Parsers** — `CamelCaseJSONParser` transforms request keys to snake_case
 
-Validation that was previously handled by Postgres triggers is now enforced in Django serializers and model `clean()` methods. This keeps validation logic in one place (Python) and provides better error messages to the API consumer.
+This means the frontend sends and receives camelCase JSON while the backend works entirely in snake_case.
 
-### Validate sponsor is circle member
+## Management commands
 
-Ensures the decision sponsor belongs to the decision's circle. Validated when `sponsor_person_id` is set (it's nullable — set when the decision is Scheduled).
+### Seed data
 
-```python
-# In DecisionSerializer or Decision.clean()
-def validate_sponsor(self, decision):
-    if decision.sponsor_person_id and not CircleMember.objects.filter(
-        circle_id=decision.circle_id,
-        person_id=decision.sponsor_person_id
-    ).exists():
-        raise ValidationError("Sponsor must be a member of the decision's circle")
-```
-
-### Validate commitment owner is circle member
-
-Ensures the commitment owner belongs to the review circle.
-
-```python
-# In CommitmentSerializer or Commitment.clean()
-def validate_owner(self, commitment):
-    if not CircleMember.objects.filter(
-        circle_id=commitment.review_circle_id,
-        person_id=commitment.owner_person_id
-    ).exists():
-        raise ValidationError("Commitment owner must be a member of the review circle")
-```
-
-## Activity event creation
-
-Activity events are created via Django signals or explicit calls in viewset `perform_create`/`perform_update` methods. A helper function handles the INSERT into `activity_events`.
-
-```python
-# core/activity.py
-def emit_activity_event(workspace_id, actor_person_id, entity_type, entity_id, action, metadata=None):
-    ActivityEvent.objects.create(
-        workspace_id=workspace_id,
-        actor_person_id=actor_person_id,
-        entity_type=entity_type,
-        entity_id=entity_id,
-        action=action,
-        metadata=metadata or {},
-    )
-```
-
-### When to use signals vs. explicit calls
-
-| Use case | Approach |
-|---|---|
-| Status changes, field updates | Explicit call in `perform_update()` — can compare old vs. new values |
-| Entity creation | Explicit call in `perform_create()` — actor is `request.user` |
-| Cascading events (e.g., circle membership changes) | Django `post_save`/`post_delete` signals |
-
-See the [event catalog](/domain/schema#event-catalog) for the full list of actions and metadata.
-
-## Planned management commands
-
-Django management commands handle scheduled and batch operations. These can be triggered via Railway cron jobs.
-
-### Auto-roll commitments
-
-A scheduled command that runs daily and rolls commitments whose due date has passed:
-
-```python
-# commitments/management/commands/auto_roll_commitments.py
-class Command(BaseCommand):
-    help = "Roll overdue commitments"
-
-    def handle(self, *args, **options):
-        today = date.today()
-        rolled = Commitment.objects.filter(
-            status__in=["Active", "At risk"],
-            due__lt=today,
-        ).update(status="Rolled")
-
-        self.stdout.write(f"Rolled {rolled} overdue commitments")
-```
-
-Triggered via a Railway cron job running daily:
+The `seed` management command populates both workspaces (Mews and Terraverde) with development data:
 
 ```bash
-python manage.py auto_roll_commitments
+cd backend
+python manage.py seed
 ```
 
-### Notification dispatch
+Creates:
+- 2 workspaces, 15 users (password: `vector123`), workspace memberships
+- 6 circles with memberships and chairs
+- 9 initiatives, 18 projects
+- 31 decisions, 37 commitments
+- 18 sessions with linked decisions and commitments
+- 27 updates (health reports for projects and initiatives)
 
-A management command (or Celery task, if needed) that sends notifications when specific events occur — e.g., a commitment is assigned, a decision is scheduled, or a session is marked complete.
+Uses `get_or_create` throughout for idempotency — safe to run multiple times.
+
+### Planned: Auto-roll commitments
+
+A scheduled command that would run daily and roll commitments whose due date has passed. Not yet implemented.
+
+### Planned: Notification dispatch
+
+A management command (or Celery task, if needed) that sends notifications when specific events occur — e.g., a commitment is assigned, a decision is scheduled, or a session is closed. Not yet implemented.
 
 ## Migration strategy
 

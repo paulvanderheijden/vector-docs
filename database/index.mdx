@@ -11,16 +11,15 @@ Vector uses **PostgreSQL** hosted on **Railway** as its primary data store. The 
 Django REST API (Railway) → PostgreSQL (Railway)
 ```
 
-Django models define the schema. Migrations are generated with `python manage.py makemigrations` and applied with `python manage.py migrate`. There is no raw SQL outside of triggers and functions documented in [Background Jobs & Triggers](/backend/database-functions).
+Django models define the schema. Migrations are generated with `python manage.py makemigrations` and applied with `python manage.py migrate`.
 
 ## Key conventions
 
 | Convention | Detail |
 |---|---|
-| **Primary keys** | UUID (`uuid4`), set as default on all models |
-| **Timestamps** | `created_at` and `updated_at` on all models via `TimeStampedModel` base |
+| **Primary keys** | Auto-increment integers (`BigAutoField`, Django default) |
 | **Soft deletes** | Workspace members are never hard-deleted — `is_active = False` instead |
-| **Workspace scoping** | All domain tables include a `workspace_id` foreign key |
+| **Workspace scoping** | All domain tables include a `workspace_id` foreign key via `WorkspaceScopedModel` |
 | **Naming** | Snake-case table and column names (Django default) |
 
 ## Sections
@@ -36,6 +35,6 @@ Django models define the schema. Migrations are generated with `python manage.py
     Complete table definitions — columns, types, constraints, and indexes.
   </Card>
   <Card title="Background Jobs & Triggers" icon="bolt" href="/backend/database-functions">
-    Django management commands, signals, and Postgres triggers.
+    Django management commands and background jobs.
   </Card>
 </CardGroup>

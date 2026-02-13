@@ -9,33 +9,31 @@ This page maps the relationships between all entities in Vector. Understanding t
 
 | Relationship | Cardinality | Notes |
 |---|---|---|
-| Person ↔ Workspace | many to many | Via WorkspaceMember; each membership has a role (Admin or Member) |
-| Person → Workspace (lastActive) | 0 to 1 | Tracks the last workspace the person used |
+| User ↔ Workspace | many to many | Via `WorkspaceMember`; each membership has a role (`admin` or `member`) and `is_active` flag |
+| User → Workspace (lastActive) | 0 to 1 | Tracks the last workspace the user used |
 
 ## Structural relationships
 
 | Relationship | Cardinality | Notes |
 |---|---|---|
-| Workspace → WorkspaceMember | 1 to many | Each member has a role: Admin or Member |
+| Workspace → WorkspaceMember | 1 to many | Each member has a role: `admin` or `member` |
 | Workspace → Circle | 1 to many | Every circle belongs to a workspace |
 | Workspace → Initiative | 1 to many | Every initiative belongs to a workspace |
 | Workspace → Project | 1 to many | Every project belongs to a workspace |
 | Workspace → Decision | 1 to many | Every decision belongs to a workspace |
 | Workspace → Commitment | 1 to many | Every commitment belongs to a workspace |
 | Initiative → Project | 1 to many | A project belongs to exactly one initiative |
-| Initiative ↔ Circle | many to many | Linked circles restrict visibility; no circles = public |
-| Project ↔ Circle | many to many | Linked circles restrict visibility; no circles = public |
-| Circle → CircleMember | 1 to many | Each member has a role: Member or Organizer |
+| Circle → CircleMembership | 1 to many | Each membership has an `is_chair` flag |
 
 ## Decision system
 
 | Relationship | Cardinality | Notes |
 |---|---|---|
 | Circle → Decision | 1 to many | A decision lives in exactly one circle at a time |
-| Person → Decision (requestor) | 1 to many | Set at creation. The person who raised the need. |
-| Person → Decision (sponsor) | 0 to many | Set when Scheduled. The circle member driving the discussion. Nullable until then. |
-| Person → Decision (owner) | 0 to many | Set when Taken. Tracks long-term validity, can revoke. Nullable until then. |
-| Initiative/Project → Decision | 0 to many | Optional context linkage |
+| User → Decision (requestor) | 0 to many | Set at creation. The person who raised the need. Nullable. |
+| User → Decision (sponsor) | 0 to many | Set when Scheduled. The circle member driving the discussion. Nullable until then. |
+| User → Decision (owner) | 0 to many | Set when Taken. Tracks long-term validity, can revoke. Nullable until then. |
+| Decision ↔ Project | many to many | Via `DecisionProject` through table. A decision can be linked to multiple projects. |
 | Decision → Decision (revisit) | 0 to 1 | Self-referential revisit chain |
 
 ## Commitment system
@@ -44,39 +42,33 @@ This page maps the relationships between all entities in Vector. Understanding t
 |---|---|---|
 | Decision → Commitment | 0 to many | A decision can have zero or many commitments |
 | Commitment → Decision | 0 to 1 | A commitment can be standalone (no parent decision) |
-| Person → Commitment (owner) | 1 to many | A commitment must have exactly one owner |
-| Circle → Commitment (review) | 1 to many | A commitment must have exactly one review circle |
+| User → Commitment (owner) | 0 to many | A commitment should have an owner (nullable) |
+| Circle → Commitment | 1 to many | A commitment belongs to exactly one circle |
+| Commitment → Project | 0 to 1 | Optional link to a project |
 
 ## Session system
 
 | Relationship | Cardinality | Notes |
 |---|---|---|
 | Circle → Session | 1 to many | A circle has zero or many sessions |
-| Session ↔ Decision | many to many | Decisions on the session agenda |
-| Session ↔ Commitment | many to many | Commitments reviewed in a session |
+| Session ↔ Decision | many to many | Via `SessionDecision` with display `order` |
+| Session ↔ Commitment | many to many | Via `SessionCommitment` with display `order` |
 
-## Project updates
-
-| Relationship | Cardinality | Notes |
-|---|---|---|
-| Project → Project Update | 1 to many | Zero or many updates per project |
-| Person → Project Update (author) | 1 to many | Each update has exactly one author |
-
-## Activity events
+## Updates
 
 | Relationship | Cardinality | Notes |
 |---|---|---|
-| Person → Activity Event (actor) | 1 to many | Every event has exactly one actor |
-| Activity Event → any entity | polymorphic | `entity_type` + `entity_id` reference any entity |
-| Workspace → Activity Event | 1 to many | Events are workspace-scoped |
+| Initiative → Update | 1 to many | Zero or many health updates per initiative |
+| Project → Update | 1 to many | Zero or many health updates per project |
+| User → Update (author) | 0 to many | Each update has an author (nullable) |
 
-Activity events are append-only — they are never updated or deleted.
+Each Update is linked to exactly one initiative or one project — not both.
 
 ## Key design decisions
 
-### Why Person is not workspace-scoped
+### Why User is not workspace-scoped
 
-A person can belong to multiple workspaces. Authentication is at the person level (JWT token), and workspace access is determined by membership. This means a single session can switch between workspaces without re-authenticating. The `lastActiveWorkspace` field stores which workspace to default to on next login.
+A user can belong to multiple workspaces. Authentication is at the user level (JWT token), and workspace access is determined by membership. This means a single session can switch between workspaces without re-authenticating. The `last_active_workspace` field stores which workspace to default to on next login.
 
 ### Why decisions live in exactly one circle
 
@@ -86,10 +78,14 @@ A decision needs a clear venue. If it could exist in multiple circles simultaneo
 
 Not every action item comes from a formal decision. Circles create ad-hoc commitments regularly. Forcing a parent decision would add friction without value.
 
+### Why decisions have M2M with projects
+
+A decision can affect multiple projects. The `DecisionProject` through table links decisions to zero or more projects, providing context without constraining the decision to a single workstream.
+
 ### Why the revisit chain is self-referential
 
 When a decision needs to be revisited, a new decision is created and linked to the original. This preserves the history of the original decision while keeping the new one in its own lifecycle with its own owner and age counter.
 
-### Why visibility uses circle links instead of a member list
+### Why changelog is stored as JSON
 
-Rather than maintaining separate subscriber lists per initiative/project, visibility is controlled by linking circles. This leverages existing circle membership and avoids the overhead of managing individual access lists. No linked circles = public to the workspace; linked circles = restricted to those circles' members.
+Activity history is stored as a JSON array directly on each entity (decisions, commitments, sessions) rather than in a separate events table. This keeps queries simple — the changelog is always read alongside its parent entity and doesn't need independent querying or cross-entity aggregation.

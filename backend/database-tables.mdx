@@ -1,363 +1,293 @@
 ---
 title: "Database Tables"
-description: "Complete Postgres table definitions for Vector."
+description: "Django model definitions for Vector."
 ---
 
-All tables live in a PostgreSQL database hosted on Railway. Tables are defined as Django models and managed via Django migrations. The SQL below represents the resulting schema.
+All tables are defined as Django models and managed via Django migrations. The schema below represents the Django model structure. Tables are prefixed with their app name (`authentication_` or `core_`).
 
 ## Naming conventions
 
-- Table names: `snake_case`, plural (`decisions`, `circle_members`)
-- Column names: `snake_case` (`sponsor_person_id`, `workspace_id`)
+- Table names: Django auto-generated from `{app}_{model}` (e.g., `core_decision`, `authentication_user`)
+- Column names: `snake_case` (`sponsor_id`, `workspace_id`)
 - Foreign keys: `{entity}_id` (`circle_id`, `initiative_id`)
-- Enums: Postgres `text` with `CHECK` constraints
-- Timestamps: `timestamptz` with defaults
+- Primary keys: Auto-increment integers (Django default)
+- Enums: `CharField` with `choices` constraint
 
-## Tables
+## Auth tables
 
-### workspaces
+These tables are in the `authentication` app.
 
-```sql
-CREATE TABLE workspaces (
-  id          uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  name        text NOT NULL,
-  slug        text NOT NULL UNIQUE,
-  logo        text,
-  created_at  timestamptz NOT NULL DEFAULT now(),
-  updated_at  timestamptz NOT NULL DEFAULT now()
-);
-```
+### authentication_user
 
-### persons
+The custom User model extends Django's `AbstractUser` with email-based login.
 
-```sql
-CREATE TABLE persons (
-  id                       uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  name                     text NOT NULL,
-  email                    text NOT NULL UNIQUE,
-  initials                 text NOT NULL,
-  last_active_workspace_id uuid REFERENCES workspaces(id) ON DELETE SET NULL,
-  created_at               timestamptz NOT NULL DEFAULT now(),
-  updated_at               timestamptz NOT NULL DEFAULT now()
-);
-```
+| Column | Type | Notes |
+|---|---|---|
+| `id` | integer | Primary key (auto) |
+| `email` | email | Unique, login identifier |
+| `password` | varchar | Hashed password |
+| `first_name` | varchar(150) | From AbstractUser |
+| `last_name` | varchar(150) | From AbstractUser |
+| `job_title` | varchar(255) | Profile field, blank allowed |
+| `avatar_url` | url(500) | Profile field, blank allowed |
+| `last_active_workspace_id` | FK → Workspace | Nullable |
+| `is_active` | boolean | Django built-in |
+| `is_staff` | boolean | Django built-in |
+| `is_superuser` | boolean | Django built-in |
+| `date_joined` | datetime | Django built-in |
 
-The `persons` table stores profile data for people within Vector. In the Django `authentication` app, the `User` model handles login credentials (email/password, JWT), while `persons` holds workspace-visible profile data. A person record is created when a user is invited to a workspace.
+Computed properties (not stored):
+- `name` — `"{first_name} {last_name}"` or email fallback
+- `initials` — first letter of first + last name, or first letter of email
 
-### workspace_members
+### authentication_workspace
 
-```sql
-CREATE TABLE workspace_members (
-  workspace_id uuid NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
-  person_id    uuid NOT NULL REFERENCES persons(id) ON DELETE CASCADE,
-  role         text NOT NULL CHECK (role IN ('Admin', 'Member')),
-  status       text NOT NULL CHECK (status IN ('Active', 'Disabled')) DEFAULT 'Active',
-  created_at   timestamptz NOT NULL DEFAULT now(),
-  PRIMARY KEY (workspace_id, person_id)
-);
-```
+| Column | Type | Notes |
+|---|---|---|
+| `id` | integer | Primary key (auto) |
+| `name` | varchar(255) | |
+| `slug` | slug | Unique |
+| `created_at` | datetime | Auto-set on create |
+
+### authentication_workspacemember
+
+| Column | Type | Notes |
+|---|---|---|
+| `id` | integer | Primary key (auto) |
+| `user_id` | FK → User | |
+| `workspace_id` | FK → Workspace | |
+| `role` | varchar(50) | `admin` or `member` |
+| `is_active` | boolean | Default `true`. Set to `false` for soft-delete. |
+
+**Unique constraint:** `(user, workspace)`
 
 | Role | Description |
 |---|---|
-| `Admin` | Can manage workspace settings, invite/remove people, create/edit circles |
-| `Member` | Can view and create entities within the workspace |
+| `admin` | Can manage workspace settings, invite/remove people, create/edit circles |
+| `member` | Can view and create entities within the workspace |
 
-| Status | Description |
-|---|---|
-| `Active` | Normal access |
-| `Disabled` | Soft-deleted — historical references preserved, no active access |
+## Domain tables
 
-### circles
+All domain tables are in the `core` app. All inherit from `WorkspaceScopedModel`, which provides a `workspace` FK.
 
-```sql
-CREATE TABLE circles (
-  id           uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  workspace_id uuid NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
-  name         text NOT NULL,
-  cadence      text NOT NULL CHECK (cadence IN ('Weekly', 'Biweekly', 'Manual')),
-  session_day  smallint CHECK (session_day BETWEEN 0 AND 6),
-  created_at   timestamptz NOT NULL DEFAULT now(),
-  updated_at   timestamptz NOT NULL DEFAULT now()
-);
-```
+### core_circle
+
+| Column | Type | Notes |
+|---|---|---|
+| `id` | integer | Primary key (auto) |
+| `workspace_id` | FK → Workspace | |
+| `name` | varchar(255) | |
+| `slug` | slug(255) | |
+| `cadence` | varchar(20) | `Weekly`, `Biweekly`, or `Manual` |
+| `icon` | varchar(50) | Lucide icon name (e.g., `Users`) |
+| `icon_bg` | varchar(100) | Tailwind classes for icon background |
+
+**Unique constraint:** `(workspace, slug)`
 
 | Cadence | Description |
 |---|---|
-| `Weekly` | Meets every week on `session_day` (0=Monday, 6=Sunday) |
-| `Biweekly` | Meets every two weeks on `session_day` |
-| `Manual` | Sessions are created manually; `session_day` is null |
+| `Weekly` | Meets every week |
+| `Biweekly` | Meets every two weeks |
+| `Manual` | Sessions are created manually |
 
-### circle_members
+### core_circlemembership
 
-```sql
-CREATE TABLE circle_members (
-  circle_id  uuid NOT NULL REFERENCES circles(id) ON DELETE CASCADE,
-  person_id  uuid NOT NULL REFERENCES persons(id) ON DELETE CASCADE,
-  role       text NOT NULL CHECK (role IN ('Member', 'Organizer')),
-  created_at timestamptz NOT NULL DEFAULT now(),
-  PRIMARY KEY (circle_id, person_id)
-);
-```
+| Column | Type | Notes |
+|---|---|---|
+| `id` | integer | Primary key (auto) |
+| `circle_id` | FK → Circle | CASCADE |
+| `user_id` | FK → User | CASCADE |
+| `is_chair` | boolean | Default `false`. A circle can have one or more chairs. |
 
-| Role | Description |
-|---|---|
-| `Member` | Can see circle content, be assigned as sponsor or commitment owner, attend sessions |
-| `Organizer` | All member capabilities, plus: manage session agendas, schedule decisions, mark sessions completed |
+**Unique constraint:** `(circle, user)`
 
-### sessions
+The `is_chair` flag replaces the old `Member`/`Organizer` role model. Circle chairs have session management capabilities (creating sessions, managing agendas, closing sessions).
 
-```sql
-CREATE TABLE sessions (
-  id           uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  circle_id    uuid NOT NULL REFERENCES circles(id) ON DELETE CASCADE,
-  number       integer NOT NULL,
-  title        text NOT NULL,
-  date         date NOT NULL,
-  decision_ids uuid[] DEFAULT '{}',
-  commitment_ids uuid[] DEFAULT '{}',
-  notes        text,
-  completed    boolean NOT NULL DEFAULT false,
-  created_at   timestamptz NOT NULL DEFAULT now(),
-  updated_at   timestamptz NOT NULL DEFAULT now(),
-  UNIQUE (circle_id, number)
-);
-```
+### core_initiative
 
-The `number` column is auto-generated per circle via a trigger (see [Background Jobs & Triggers](/backend/database-functions)). The `UNIQUE (circle_id, number)` constraint ensures no duplicates within a circle.
+| Column | Type | Notes |
+|---|---|---|
+| `id` | integer | Primary key (auto) |
+| `workspace_id` | FK → Workspace | |
+| `title` | varchar(255) | |
+| `slug` | slug(255) | |
+| `summary` | text | Blank allowed |
+| `description` | text | Blank allowed |
+| `owner_id` | FK → User | Nullable, SET_NULL |
+| `icon` | varchar(50) | Lucide icon name |
+| `icon_color` | varchar(100) | Tailwind color class |
+| `target` | varchar(100) | Target date/quarter (e.g., "Q2 2026") |
+| `status` | varchar(20) | `planned`, `active`, or `completed` |
 
-### initiatives
+**Unique constraint:** `(workspace, slug)`
 
-```sql
-CREATE TABLE initiatives (
-  id           uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  workspace_id uuid NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
-  name         text NOT NULL,
-  status       text NOT NULL CHECK (status IN ('Planned', 'Active', 'Completed')),
-  target_date  text NOT NULL,
-  created_at   timestamptz NOT NULL DEFAULT now(),
-  updated_at   timestamptz NOT NULL DEFAULT now()
-);
-```
+### core_project
 
-| Status | Description |
-|---|---|
-| `Planned` | Defined but work has not started |
-| `Active` | In progress — projects are being executed |
-| `Completed` | Delivered or closed |
+| Column | Type | Notes |
+|---|---|---|
+| `id` | integer | Primary key (auto) |
+| `workspace_id` | FK → Workspace | |
+| `title` | varchar(255) | |
+| `slug` | slug(255) | |
+| `description` | text | Blank allowed |
+| `initiative_id` | FK → Initiative | CASCADE |
+| `owner_id` | FK → User | Nullable, SET_NULL |
 
-### initiative_circles
+**Unique constraint:** `(workspace, slug)`
 
-```sql
-CREATE TABLE initiative_circles (
-  initiative_id uuid NOT NULL REFERENCES initiatives(id) ON DELETE CASCADE,
-  circle_id     uuid NOT NULL REFERENCES circles(id) ON DELETE CASCADE,
-  PRIMARY KEY (initiative_id, circle_id)
-);
-```
+### core_decision
 
-Links circles to an initiative for restricted visibility. If no rows exist, the initiative is visible to all workspace members.
+| Column | Type | Notes |
+|---|---|---|
+| `id` | integer | Primary key (auto) |
+| `workspace_id` | FK → Workspace | |
+| `ref` | varchar(20) | Display reference (e.g., `D-1`) |
+| `statement` | varchar(500) | The decision statement |
+| `slug` | slug(255) | |
+| `description` | text | Blank allowed |
+| `discussion` | text | Blank allowed |
+| `summary` | text | Blank allowed |
+| `status` | varchar(20) | See status enum below |
+| `rolled` | boolean | Default `false`. Set when session closes with decision unresolved. |
+| `requested_date` | date | Nullable. Auto-set on Draft → Requested transition. |
+| `circle_id` | FK → Circle | CASCADE |
+| `requested_by_id` | FK → User | Nullable, SET_NULL |
+| `sponsor_id` | FK → User | Nullable, SET_NULL |
+| `owner_id` | FK → User | Nullable, SET_NULL |
+| `revisit_of_id` | FK → self | Nullable, SET_NULL |
+| `changelog` | JSON | Array of changelog entries |
 
-### projects
+**Unique constraint:** `(workspace, slug)`
 
-```sql
-CREATE TABLE projects (
-  id             uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  workspace_id   uuid NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
-  initiative_id  uuid NOT NULL REFERENCES initiatives(id) ON DELETE CASCADE,
-  name           text NOT NULL,
-  lead_person_id uuid NOT NULL REFERENCES persons(id),
-  created_at     timestamptz NOT NULL DEFAULT now(),
-  updated_at     timestamptz NOT NULL DEFAULT now()
-);
-```
-
-### project_circles
-
-```sql
-CREATE TABLE project_circles (
-  project_id uuid NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
-  circle_id  uuid NOT NULL REFERENCES circles(id) ON DELETE CASCADE,
-  PRIMARY KEY (project_id, circle_id)
-);
-```
-
-Links circles to a project for restricted visibility. If no rows exist, the project is visible to all workspace members.
-
-### decisions
-
-```sql
-CREATE TABLE decisions (
-  id                     uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  workspace_id           uuid NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
-  title                  text NOT NULL,
-  description            text,
-  status                 text NOT NULL CHECK (status IN ('Draft', 'Requested', 'Scheduled', 'Rolled', 'Taken'))
-                           DEFAULT 'Draft',
-  circle_id              uuid NOT NULL REFERENCES circles(id),
-  requested_by_person_id uuid NOT NULL REFERENCES persons(id),
-  requested_date         date,
-  sponsor_person_id      uuid REFERENCES persons(id),
-  owner_person_id        uuid REFERENCES persons(id),
-  initiative_id          uuid REFERENCES initiatives(id) ON DELETE SET NULL,
-  project_id             uuid REFERENCES projects(id) ON DELETE SET NULL,
-  revisit_of_decision_id uuid REFERENCES decisions(id) ON DELETE SET NULL,
-  created_at             timestamptz NOT NULL DEFAULT now(),
-  updated_at             timestamptz NOT NULL DEFAULT now()
-);
-```
+**M2M:** `projects` via `core_decisionproject`
 
 | Status | Description |
 |---|---|
-| `Draft` | Created but not ready for discussion. The requestor is gathering context. |
-| `Requested` | Formally submitted to a circle. The age counter starts. Available for an upcoming session. |
-| `Scheduled` | On a specific session's agenda. A sponsor has been assigned. |
-| `Rolled` | Was on the agenda but not resolved. Carries over to next session. |
-| `Taken` | The circle made the call. An owner has been assigned. Decision is closed. |
+| `Draft` | Created but not ready for discussion |
+| `Requested` | Formally submitted to a circle. Age counter starts. |
+| `Scheduled` | On a session's agenda. A sponsor has been assigned. |
+| `Taken` | The circle made the call. An owner has been assigned. |
+| `Rolled` | Was on the agenda but not resolved. |
+| `Superseded` | Replaced by a newer decision. |
 
-The decision's age in days is computed in the frontend from `requested_date`. Age is null while the decision is in Draft status.
+### core_decisionproject
 
-`requested_date` is auto-set when the decision moves from Draft to Requested.
+M2M through table linking decisions to projects.
 
-`sponsor_person_id` is set when the decision is Scheduled. Must be a circle member.
+| Column | Type | Notes |
+|---|---|---|
+| `id` | integer | Primary key (auto) |
+| `decision_id` | FK → Decision | CASCADE |
+| `project_id` | FK → Project | CASCADE |
 
-`owner_person_id` is set when the decision is Taken. Tracks long-term validity, can revoke.
+**Unique constraint:** `(decision, project)`
 
-### decision_references
+### core_commitment
 
-```sql
-CREATE TABLE decision_references (
-  id          uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  decision_id uuid NOT NULL REFERENCES decisions(id) ON DELETE CASCADE,
-  type        text NOT NULL CHECK (type IN ('file', 'link')),
-  url         text NOT NULL,
-  title       text,
-  created_at  timestamptz NOT NULL DEFAULT now()
-);
-```
+| Column | Type | Notes |
+|---|---|---|
+| `id` | integer | Primary key (auto) |
+| `workspace_id` | FK → Workspace | |
+| `ref` | varchar(20) | Display reference (e.g., `C-1`) |
+| `outcome` | varchar(500) | The commitment outcome statement |
+| `slug` | slug(255) | |
+| `description` | text | Blank allowed |
+| `status` | varchar(20) | `Active`, `Delivered`, or `Rolled` |
+| `due` | varchar(100) | Due date/period as text (e.g., "Q1 2026") |
+| `circle_id` | FK → Circle | CASCADE |
+| `owner_id` | FK → User | Nullable, SET_NULL |
+| `decision_id` | FK → Decision | Nullable, SET_NULL. Optional link to originating decision. |
+| `project_id` | FK → Project | Nullable, SET_NULL. Optional link to a project. |
+| `changelog` | JSON | Array of changelog entries |
 
-### commitments
+**Unique constraint:** `(workspace, slug)`
 
-```sql
-CREATE TABLE commitments (
-  id               uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  workspace_id     uuid NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
-  title            text NOT NULL,
-  description      text,
-  status           text NOT NULL CHECK (status IN ('Active', 'At risk', 'Rolled', 'Delivered'))
-                     DEFAULT 'Active',
-  owner_person_id  uuid NOT NULL REFERENCES persons(id),
-  review_circle_id uuid NOT NULL REFERENCES circles(id),
-  decision_id      uuid REFERENCES decisions(id) ON DELETE SET NULL,
-  due              date NOT NULL,
-  created_at       timestamptz NOT NULL DEFAULT now(),
-  updated_at       timestamptz NOT NULL DEFAULT now()
-);
-```
+### core_session
 
-| Status | Description |
-|---|---|
-| `Active` | On track, being worked on |
-| `At risk` | Flagged for potential slippage |
-| `Rolled` | Due date passed without delivery |
-| `Delivered` | Outcome completed, commitment closed |
+| Column | Type | Notes |
+|---|---|---|
+| `id` | integer | Primary key (auto) |
+| `workspace_id` | FK → Workspace | |
+| `number` | positive integer | Session number within a circle |
+| `title` | varchar(255) | |
+| `slug` | slug(255) | |
+| `date` | date | |
+| `status` | varchar(20) | `Open`, `Closed`, or `Cancelled` |
+| `notes` | text | Blank allowed |
+| `circle_id` | FK → Circle | CASCADE |
+| `changelog` | JSON | Array of changelog entries |
 
-### project_updates
+**Unique constraint:** `(workspace, slug)`
 
-```sql
-CREATE TABLE project_updates (
-  id               uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  project_id       uuid NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
-  author_person_id uuid NOT NULL REFERENCES persons(id),
-  date             date NOT NULL,
-  health           text NOT NULL CHECK (health IN ('On track', 'At risk', 'Off track')),
-  content          text NOT NULL,
-  created_at       timestamptz NOT NULL DEFAULT now(),
-  updated_at       timestamptz NOT NULL DEFAULT now()
-);
-```
+**M2M:** `decisions` via `core_sessiondecision`, `commitments` via `core_sessioncommitment`
+
+### core_sessiondecision
+
+Through table linking sessions to decisions with ordering.
+
+| Column | Type | Notes |
+|---|---|---|
+| `id` | integer | Primary key (auto) |
+| `session_id` | FK → Session | CASCADE |
+| `decision_id` | FK → Decision | CASCADE |
+| `order` | positive integer | Display order, default `0` |
+
+**Unique constraint:** `(session, decision)`
+**Default ordering:** `order` ascending
+
+### core_sessioncommitment
+
+Through table linking sessions to commitments with ordering.
+
+| Column | Type | Notes |
+|---|---|---|
+| `id` | integer | Primary key (auto) |
+| `session_id` | FK → Session | CASCADE |
+| `commitment_id` | FK → Commitment | CASCADE |
+| `order` | positive integer | Display order, default `0` |
+
+**Unique constraint:** `(session, commitment)`
+**Default ordering:** `order` ascending
+
+### core_update
+
+Health updates for initiatives and projects.
+
+| Column | Type | Notes |
+|---|---|---|
+| `id` | integer | Primary key (auto) |
+| `workspace_id` | FK → Workspace | |
+| `initiative_id` | FK → Initiative | Nullable, CASCADE |
+| `project_id` | FK → Project | Nullable, CASCADE |
+| `author_id` | FK → User | Nullable, SET_NULL |
+| `date` | date | |
+| `health` | varchar(20) | `on-track`, `at-risk`, or `off-track` |
+| `content` | text | Markdown content |
+
+**Default ordering:** `-date` (newest first)
+
+Exactly one of `initiative_id` or `project_id` must be set per update.
 
 | Health | Description |
 |---|---|
-| `On track` | Progressing as expected, no blockers |
-| `At risk` | Potential delays or blockers that may cause problems |
-| `Off track` | Behind schedule or significant issues needing intervention |
+| `on-track` | Progressing as expected, no blockers |
+| `at-risk` | Potential delays or blockers that may cause problems |
+| `off-track` | Behind schedule or significant issues needing intervention |
 
-### activity_events
+## Design decisions
 
-```sql
-CREATE TABLE activity_events (
-  id              uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  workspace_id    uuid NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
-  actor_person_id uuid NOT NULL REFERENCES persons(id),
-  entity_type     text NOT NULL,
-  entity_id       uuid NOT NULL,
-  action          text NOT NULL,
-  metadata        jsonb,
-  created_at      timestamptz NOT NULL DEFAULT now()
-);
-```
+### Person = User
 
-Append-only audit trail. Each row records who did what to which entity. The `metadata` JSONB column stores action-specific details (e.g., old/new status, referenced circle or person IDs). The frontend renders each event into a human-readable sentence with clickable links.
+There is no separate `Person` table. The Django `User` model stores both authentication credentials and profile data (`first_name`, `last_name`, `job_title`, `avatar_url`). The `name` and `initials` properties are computed at the model level.
 
-No `updated_at` — activity events are never modified.
+### Changelog as JSONField
 
-## Indexes
+Activity history for decisions, commitments, and sessions is stored as a JSON array directly on each entity rather than in a separate `activity_events` table. This keeps queries simple and matches the frontend's data structure.
 
-```sql
--- Workspace-scoped lookups (most common query pattern)
-CREATE INDEX idx_circles_workspace ON circles(workspace_id);
-CREATE INDEX idx_initiatives_workspace ON initiatives(workspace_id);
-CREATE INDEX idx_projects_workspace ON projects(workspace_id);
-CREATE INDEX idx_decisions_workspace ON decisions(workspace_id);
-CREATE INDEX idx_commitments_workspace ON commitments(workspace_id);
+### Auto-increment IDs
 
--- Circle content lookups
-CREATE INDEX idx_sessions_circle ON sessions(circle_id);
-CREATE INDEX idx_decisions_circle ON decisions(circle_id);
-CREATE INDEX idx_commitments_review_circle ON commitments(review_circle_id);
+All tables use Django's default auto-increment integer primary keys. UUIDs were considered but are not needed for this application.
 
--- Person lookups
-CREATE INDEX idx_decisions_sponsor ON decisions(sponsor_person_id);
-CREATE INDEX idx_decisions_requested_by ON decisions(requested_by_person_id);
-CREATE INDEX idx_commitments_owner ON commitments(owner_person_id);
+### Soft deletes
 
--- Status filtering
-CREATE INDEX idx_decisions_status ON decisions(status);
-CREATE INDEX idx_commitments_status ON commitments(status);
-CREATE INDEX idx_initiatives_status ON initiatives(status);
-
--- Project hierarchy
-CREATE INDEX idx_projects_initiative ON projects(initiative_id);
-CREATE INDEX idx_project_updates_project ON project_updates(project_id);
-
--- Activity events
-CREATE INDEX idx_activity_events_workspace ON activity_events(workspace_id);
-CREATE INDEX idx_activity_events_entity ON activity_events(entity_type, entity_id);
-CREATE INDEX idx_activity_events_actor ON activity_events(actor_person_id);
-CREATE INDEX idx_activity_events_created ON activity_events(created_at DESC);
-```
-
-## Updated_at trigger
-
-All tables with `updated_at` use a shared trigger:
-
-```sql
-CREATE OR REPLACE FUNCTION update_updated_at()
-RETURNS trigger AS $$
-BEGIN
-  NEW.updated_at = now();
-  RETURN NEW;
-END;
-$$ LANGUAGE plpgsql;
-
--- Applied to each table:
-CREATE TRIGGER set_updated_at BEFORE UPDATE ON workspaces
-  FOR EACH ROW EXECUTE FUNCTION update_updated_at();
-CREATE TRIGGER set_updated_at BEFORE UPDATE ON persons
-  FOR EACH ROW EXECUTE FUNCTION update_updated_at();
--- ... (same for all tables with updated_at)
-```
-
-<Note>
-  Django's `auto_now=True` on `DateTimeField` handles `updated_at` at the application level. The Postgres trigger is an additional safeguard for direct database operations.
-</Note>
+Workspace members are soft-deleted by setting `is_active = false`. All foreign keys to User use `SET_NULL` so historical references (requestor, sponsor, owner on past decisions) remain intact.

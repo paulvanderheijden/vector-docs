@@ -38,45 +38,49 @@ The frontend calls the Django API over HTTPS. All CRUD operations go through exp
 
 ## Project structure
 
+The backend lives in the `backend/` directory of the monorepo (`vector/`).
+
 ```
-vector-backend/
+backend/
 ├── vector/                     # Django project package
 │   ├── settings.py
-│   ├── urls.py
+│   ├── urls.py                 # Root URL config: auth/ + api/v1/workspaces/<slug>/
 │   ├── wsgi.py
 │   └── asgi.py
 ├── authentication/             # Auth app
 │   ├── models.py               # User, Workspace, WorkspaceMember
-│   ├── serializers.py
+│   ├── serializers.py          # WorkspaceSerializer
 │   ├── views.py                # login, logout, me, workspaces, switch
 │   ├── urls.py
 │   └── admin.py
-└── core/                       # Shared utilities
-    ├── permissions.py           # HasWorkspaceAccess, IsSuperUser
+└── core/                       # Domain app
+    ├── models.py               # Circle, Decision, Commitment, Session, Initiative, Project, Update
+    ├── serializers.py           # DRF serializers for all domain models
+    ├── views.py                 # ViewSets for all domain resources
+    ├── urls.py                  # DRF router registering all viewsets
+    ├── admin.py                 # Django admin registration
+    ├── managers.py              # WorkspaceScopedManager, WorkspaceScopedQuerySet
     ├── viewsets.py              # WorkspaceScopedViewSetMixin
-    ├── managers.py              # WorkspaceScopedManager
-    └── models.py                # WorkspaceScopedQuerySet
+    ├── permissions.py           # HasWorkspaceAccess, IsSuperUser
+    └── management/
+        └── commands/
+            └── seed.py          # Seed command for dev data
 ```
-
-Future domain apps (e.g., `circles`, `decisions`, `commitments`) will follow the same pattern — each app gets its own models, serializers, viewsets, and URLs, all workspace-scoped via the core utilities.
 
 ## Frontend integration
 
-The React app authenticates via JWT and includes the token in every request:
+The React app (in `frontend/`) authenticates via JWT and includes the token in every request. The frontend uses Axios with interceptors for JWT management and React Query for data fetching.
 
 ```typescript
-// Login
-const response = await fetch('/auth/v1/login/', {
-  method: 'POST',
-  headers: { 'Content-Type': 'application/json' },
-  body: JSON.stringify({ email, password }),
-});
-const { access, refresh, workspaces, active_workspace } = await response.json();
+// Axios client (frontend/src/lib/api.ts)
+const api = axios.create({ baseURL: import.meta.env.VITE_API_URL });
 
-// Authenticated requests
-const decisions = await fetch(`/api/v1/${workspaceSlug}/decisions/`, {
-  headers: { Authorization: `Bearer ${access}` },
-});
+// JWT interceptor attaches access token from localStorage
+// 401 interceptor auto-refreshes expired tokens
+
+// React Query hooks (frontend/src/lib/services/*.ts)
+const { data: decisions } = useDecisions({ circle: "mt-weekly" });
+const { data: session } = useSession("mt-weekly-12");
 ```
 
 ## Sections
@@ -89,7 +93,7 @@ const decisions = await fetch(`/api/v1/${workspaceSlug}/decisions/`, {
     The complete login, session, and token lifecycle from first visit to logout.
   </Card>
   <Card title="API Reference" icon="code" href="/backend/api">
-    REST API conventions, auth endpoints, and planned domain endpoints.
+    REST API conventions, auth endpoints, and domain endpoints.
   </Card>
   <Card title="Permissions" icon="user-shield" href="/backend/permissions">
     How permissions are derived from data relationships and enforced in Django.

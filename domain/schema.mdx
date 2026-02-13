@@ -3,22 +3,21 @@ title: "Schema"
 description: "The entity model behind Vector."
 ---
 
-This is the conceptual schema for Vector V1. It describes the entities and their fields — not a database implementation, but the design spec that drives the product.
+This is the conceptual schema for Vector V1. It describes the entities and their fields as implemented in the Django backend.
 
 ## Entities
 
 | Entity             | Description                                                               |
 | ------------------ | ------------------------------------------------------------------------- |
 | **Workspace**      | The organization; people access it via membership                         |
-| **Person**         | A user; can belong to multiple workspaces                                 |
+| **Person (User)**  | A user; can belong to multiple workspaces                                 |
 | **Circle**         | A recurring forum where decisions are routed and commitments are reviewed |
 | **Session**        | A record that a circle actually met                                       |
 | **Initiative**     | A strategic bet with status and target date                               |
 | **Project**        | An execution container; belongs to exactly one initiative                 |
 | **Decision**       | A direction-setting artifact routed through a circle                      |
 | **Commitment**     | An execution artifact reviewed in a circle                                |
-| **Project Update** | A status report on a project                                              |
-| **Activity Event** | A structured audit log entry recording who did what to which entity       |
+| **Update**         | A health report on an initiative or project                               |
 
 ## Entity details
 
@@ -28,24 +27,32 @@ This is the conceptual schema for Vector V1. It describes the entities and their
 | --------- | ------------------ | -------- |
 | `name`    | string             | yes      |
 | `slug`    | string (unique)    | yes      |
-| `logo`    | string             | no       |
+| `created_at` | datetime        | yes (auto) |
 | `members` | WorkspaceMember[]  | yes      |
 
-A **WorkspaceMember** is `{ personId, role }` where role is:
+A **WorkspaceMember** is `{ user, role, is_active }` where role is:
 
 | Value | Description |
 |---|---|
-| `Admin` | Can manage workspace settings, invite/remove people, create/edit circles, and manage all entities |
-| `Member` | Can view and create entities within the workspace; cannot manage workspace settings or membership |
+| `admin` | Can manage workspace settings, invite/remove people, create/edit circles, and manage all entities |
+| `member` | Can view and create entities within the workspace; cannot manage workspace settings or membership |
 
-### Person
+### Person (User)
+
+There is no separate Person table. The Django `User` model stores both authentication credentials and profile data. The `name` and `initials` properties are computed at the model level.
 
 | Field                  | Type      | Required |
 | ---------------------- | --------- | -------- |
-| `name`                 | string    | yes      |
-| `email`                | string    | yes      |
-| `initials`             | string    | yes      |
-| `lastActiveWorkspace`  | Workspace | no       |
+| `email`                | email (unique) | yes  |
+| `first_name`           | string    | no       |
+| `last_name`            | string    | no       |
+| `job_title`            | string    | no       |
+| `avatar_url`           | url       | no       |
+| `last_active_workspace` | Workspace | no      |
+
+Computed properties (not stored):
+- `name` — `"{first_name} {last_name}"` or email fallback
+- `initials` — first letter of first + last name, or first letter of email
 
 A person is **not** workspace-scoped — they can belong to multiple workspaces via `WorkspaceMember`. Authentication is at the person level; workspace access is determined by membership.
 
@@ -53,100 +60,129 @@ A person is **not** workspace-scoped — they can belong to multiple workspaces 
 
 | Field         | Type             | Required |
 | ------------- | ---------------- | -------- |
-| `workspaceId` | Workspace        | yes      |
+| `workspace`   | Workspace        | yes      |
 | `name`        | string           | yes      |
+| `slug`        | slug (unique per workspace) | yes |
 | `cadence`     | Cadence          | yes      |
-| `sessionDay`  | integer (0-6)    | when cadence ≠ Manual |
-| `members`     | CircleMember[]   | yes      |
+| `icon`        | string           | no       |
+| `icon_bg`     | string           | no       |
 
 **Cadence** values:
 
 | Value | Description |
 |---|---|
-| `Weekly` | The circle meets every week on `sessionDay` |
-| `Biweekly` | The circle meets every two weeks on `sessionDay` |
+| `Weekly` | The circle meets every week |
+| `Biweekly` | The circle meets every two weeks |
 | `Manual` | Sessions are created manually; the system does not auto-generate next sessions |
 
-A **CircleMember** is `{ personId, role }` where role is:
+A **CircleMembership** is `{ user, is_chair }`:
 
-| Value | Description |
-|---|---|
-| `Member` | Can see all circle content, be assigned as sponsor or commitment owner, and attend sessions |
-| `Organizer` | All member capabilities, plus: manage session agendas, schedule decisions, and mark sessions as completed |
+| Field | Type | Description |
+|---|---|---|
+| `user` | User | The circle member |
+| `is_chair` | boolean | If `true`, the member can manage session agendas, schedule decisions, and close sessions |
 
 ### Session
 
 | Field           | Type         | Required |
 | --------------- | ------------ | -------- |
-| `number`        | integer (generated) | yes |
-| `circleId`      | Circle       | yes      |
+| `workspace`     | Workspace    | yes      |
+| `number`        | positive integer | yes  |
 | `title`         | string       | yes      |
+| `slug`          | slug (unique per workspace) | yes |
 | `date`          | date         | yes      |
-| `decisionIds`   | Decision[]   | —        |
-| `commitmentIds` | Commitment[] | —        |
-| `notes`         | markdown     | —        |
-| `completed`     | boolean      | yes      |
+| `status`        | SessionStatus | yes     |
+| `notes`         | text (markdown) | no    |
+| `circle`        | Circle       | yes      |
+| `decisions`     | Decision[] (M2M with order) | — |
+| `commitments`   | Commitment[] (M2M with order) | — |
+| `changelog`     | JSON array   | no       |
 
-Session numbers are auto-generated per circle, starting at 1. Each circle has its own independent sequence.
+Session numbers are per-circle, starting at 1.
+
+**SessionStatus** values:
+
+| Value | Description |
+|---|---|
+| `Open` | The session is upcoming or in progress — decisions and commitments can be edited |
+| `Closed` | The session has concluded — all fields are locked except status |
+| `Cancelled` | The session was cancelled — all fields are locked except status |
 
 ### Initiative
 
 | Field          | Type                                | Required |
 | -------------- | ----------------------------------- | -------- |
-| `workspaceId`  | Workspace                           | yes      |
-| `name`         | string                              | yes      |
+| `workspace`    | Workspace                           | yes      |
+| `title`        | string                              | yes      |
+| `slug`         | slug (unique per workspace)         | yes      |
+| `summary`      | text                                | no       |
+| `description`  | text                                | no       |
+| `owner`        | User                                | no       |
+| `icon`         | string                              | no       |
+| `icon_color`   | string                              | no       |
+| `target`       | string                              | no       |
 | `status`       | InitiativeStatus                    | yes      |
-| `targetDate`   | string                              | yes      |
-| `circles`      | Circle[]                            | —        |
-| `projects`     | Project[]                           | —        |
 
 **InitiativeStatus** values:
 
 | Value | Description |
 |---|---|
-| `Planned` | The initiative has been defined but work has not started |
-| `Active` | The initiative is in progress — projects are being executed |
-| `Completed` | The initiative has been delivered or closed |
+| `planned` | The initiative has been defined but work has not started |
+| `active` | The initiative is in progress — projects are being executed |
+| `completed` | The initiative has been delivered or closed |
 
-Visibility is determined by the `circles` field: if no circles are linked, the initiative is visible to all workspace members. If circles are linked, only members of those circles can see it.
+Computed fields (not stored):
+- `project_count` — number of projects under this initiative
+- `completed_project_count` — projects with all work delivered
+- `worst_health` — derived from the worst health status across all project Updates
 
 ### Project
 
 | Field          | Type                     | Required |
 | -------------- | ------------------------ | -------- |
-| `workspaceId`  | Workspace                | yes      |
-| `name`         | string                   | yes      |
-| `initiativeId` | Initiative               | yes      |
-| `lead`         | Person                   | yes      |
-| `circles`      | Circle[]                 | —        |
+| `workspace`    | Workspace                | yes      |
+| `title`        | string                   | yes      |
+| `slug`         | slug (unique per workspace) | yes   |
+| `description`  | text                     | no       |
+| `initiative`   | Initiative               | yes      |
+| `owner`        | User                     | no       |
 
-Visibility follows the same rule as initiatives: no linked circles = public, linked circles = restricted to those circles' members.
+Computed fields (not stored):
+- `health` — derived from the project's most recent Update
+- `open_commitment_count` — commitments linked to this project with status `Active`
+- `active_decision_count` — decisions linked to this project excluding `Taken` and `Superseded`
 
 ### Decision
 
 | Field                 | Type                                                    | Required |
 | --------------------- | ------------------------------------------------------- | -------- |
-| `workspaceId`         | Workspace                                               | yes      |
-| `title`               | string                                                  | yes      |
-| `description`         | markdown                                                | no       |
+| `workspace`           | Workspace                                               | yes      |
+| `ref`                 | string                                                  | yes      |
+| `statement`           | string (max 500)                                        | yes      |
+| `slug`                | slug (unique per workspace)                             | yes      |
+| `description`         | text                                                    | no       |
+| `discussion`          | text                                                    | no       |
+| `summary`             | text                                                    | no       |
 | `status`              | DecisionStatus                                          | yes      |
-| `circleId`            | Circle                                                  | yes      |
-| `requestedByPersonId` | Person                                                  | yes      |
-| `requestedDate`       | date                                                    | no       |
-| `sponsorPersonId`     | Person                                                  | no       |
-| `ownerPersonId`       | Person                                                  | no       |
-| `initiativeId`        | Initiative                                              | no       |
-| `projectId`           | Project                                                 | no       |
-| `revisitOfDecisionId` | Decision                                                | no       |
-| `references`          | Reference[]                                             | —        |
+| `rolled`              | boolean                                                 | no       |
+| `requested_date`      | date                                                    | no       |
+| `circle`              | Circle                                                  | yes      |
+| `requested_by`        | User                                                    | no       |
+| `sponsor`             | User                                                    | no       |
+| `owner`               | User                                                    | no       |
+| `revisit_of`          | Decision (self-referential)                             | no       |
+| `projects`            | Project[] (M2M via DecisionProject)                     | —        |
+| `changelog`           | JSON array                                              | no       |
 
-The decision's age in days is computed in the frontend from `requestedDate`. Age is null while the decision is in Draft status.
+The decision's age in days is computed in the frontend from `requested_date`. Age is null while the decision is in Draft status.
 
-`requestedDate` is auto-set when the decision moves from Draft to Requested.
+`requested_date` is auto-set when the decision moves from Draft to Requested.
 
-`sponsorPersonId` is set when the decision is Scheduled into a session. Must be a circle member.
+`sponsor` is set when the decision is Scheduled into a session. Must be a circle member.
 
-`ownerPersonId` is set when the decision is Taken. Tracks long-term validity and can revoke.
+`owner` is set when the decision is Taken. Tracks long-term validity and can revoke.
+
+`rolled` is set to `true` when a session is closed and the decision was still open (not Taken or Superseded). Once rolled, the available status transitions are: Rolled, Taken, or Superseded.
 
 **DecisionStatus** values:
 
@@ -159,143 +195,88 @@ The decision's age in days is computed in the frontend from `requestedDate`. Age
 | `Taken` | The circle made the call. An owner has been assigned. The decision is closed and commitments may be created from it. |
 | `Superseded` | Explicitly replaced by another decision. Historical only — read-only forever. |
 
-A **Reference** is a file or link attached to a decision for context (e.g., a document, spreadsheet, or external URL).
-
 ### Commitment
 
 | Field           | Type                                       | Required |
 | --------------- | ------------------------------------------ | -------- |
-| `workspaceId`   | Workspace                                  | yes      |
-| `title`         | string                                     | yes      |
-| `description`   | markdown                                   | no       |
+| `workspace`     | Workspace                                  | yes      |
+| `ref`           | string                                     | yes      |
+| `outcome`       | string (max 500)                           | yes      |
+| `slug`          | slug (unique per workspace)                | yes      |
+| `description`   | text                                       | no       |
 | `status`        | CommitmentStatus                           | yes      |
-| `ownerPersonId` | Person                                     | yes      |
-| `reviewCircleId` | Circle                                    | yes      |
-| `decisionId`    | Decision                                   | no       |
-| `due`           | date                                       | yes      |
+| `due`           | string                                     | no       |
+| `circle`        | Circle                                     | yes      |
+| `owner`         | User                                       | no       |
+| `decision`      | Decision                                   | no       |
+| `project`       | Project                                    | no       |
+| `changelog`     | JSON array                                 | no       |
 
 **CommitmentStatus** values:
 
 | Value | Description |
 |---|---|
 | `Active` | On track, being worked on. The owner is progressing toward the due date. |
-| `At risk` | The owner or circle has flagged potential slippage. May still be delivered on time. |
 | `Rolled` | The due date passed without delivery. The commitment visibly carries over to the next session. |
 | `Delivered` | The outcome has been completed. The commitment is closed. |
 
-### Project Update
+### Update
+
+Health updates for both initiatives and projects. Each update is linked to exactly one of the two.
 
 | Field            | Type     | Required |
 | ---------------- | -------- | -------- |
-| `projectId`      | Project                                    | yes      |
-| `authorPersonId` | Person                                     | yes      |
+| `workspace`      | Workspace                                  | yes      |
+| `initiative`     | Initiative                                 | no       |
+| `project`        | Project                                    | no       |
+| `author`         | User                                       | no       |
 | `date`           | date                                       | yes      |
-| `health`         | ProjectHealth                              | yes      |
-| `content`        | markdown                                   | yes      |
+| `health`         | Health                                     | yes      |
+| `content`        | text (markdown)                            | yes      |
 
-**ProjectHealth** values:
+Exactly one of `initiative` or `project` must be set per update.
+
+**Health** values:
 
 | Value | Description |
 |---|---|
-| `On track` | The project is progressing as expected. No blockers or risks. |
-| `At risk` | There are concerns — potential delays, blockers, or dependencies that may cause problems. |
-| `Off track` | The project is behind schedule or has significant issues that need intervention. |
+| `on-track` | The work is progressing as expected. No blockers or risks. |
+| `at-risk` | There are concerns — potential delays, blockers, or dependencies that may cause problems. |
+| `off-track` | Behind schedule or has significant issues that need intervention. |
 
-### Activity Event
+## Changelog
 
-| Field            | Type     | Required |
-| ---------------- | -------- | -------- |
-| `workspaceId`    | Workspace                                    | yes      |
-| `actorPersonId`  | Person                                       | yes      |
-| `entityType`     | string                                       | yes      |
-| `entityId`       | uuid                                         | yes      |
-| `action`         | string                                       | yes      |
-| `metadata`       | json                                         | no       |
+Activity history for decisions, commitments, and sessions is stored as a JSON array directly on each entity (the `changelog` field) rather than in a separate Activity Event table. Each entry follows this structure:
 
-Activity events form the history/audit trail for all entities. Each event records **who** did **what** to **which entity**, with flexible metadata for action-specific details.
+```json
+{
+  "action": "status",
+  "person": "Matt Welle",
+  "date": "2026-02-10",
+  "from": "Scheduled",
+  "to": "Taken"
+}
+```
 
-**`entityType`** identifies the kind of entity: `Decision`, `Commitment`, `Session`, `Initiative`, `Project`, `Circle`.
+Common action types: `created`, `status`, `sponsor`, `owner`, `assigned`, `due`.
 
-**`metadata`** is a flexible JSON object. Each action type stores different fields. The frontend uses `entityType`, `action`, and `metadata` to render a human-readable sentence with clickable links to the referenced entities.
-
-Activity events are generated automatically via Postgres triggers when records are created or updated. See [Functions & Triggers](/backend/database-functions) for the implementation.
-
-#### Event catalog
-
-##### Decision events
-
-| Action | Trigger | Metadata |
-|---|---|---|
-| `created` | INSERT | — |
-| `status_changed` | `status` column changed | `{ "from": "Draft", "to": "Requested" }` |
-| `moved_circle` | `circle_id` column changed | `{ "from_circle_id": "...", "to_circle_id": "..." }` |
-| `sponsor_assigned` | `sponsor_person_id` set or changed | `{ "person_id": "..." }` |
-| `owner_assigned` | `owner_person_id` set or changed | `{ "person_id": "..." }` |
-| `reference_added` | INSERT on `decision_references` | `{ "reference_id": "..." }` |
-| `reference_removed` | DELETE on `decision_references` | `{ "reference_id": "..." }` |
-
-##### Commitment events
-
-| Action | Trigger | Metadata |
-|---|---|---|
-| `created` | INSERT | — |
-| `status_changed` | `status` column changed | `{ "from": "Active", "to": "At risk" }` |
-| `owner_reassigned` | `owner_person_id` changed | `{ "from_person_id": "...", "to_person_id": "..." }` |
-| `due_date_changed` | `due` column changed | `{ "from": "2025-03-01", "to": "2025-03-15" }` |
-
-##### Session events
-
-| Action | Trigger | Metadata |
-|---|---|---|
-| `created` | INSERT | — |
-| `completed` | `completed` changed to `true` | — |
-| `decision_added` | `decision_ids` array gains an entry | `{ "decision_id": "..." }` |
-| `decision_removed` | `decision_ids` array loses an entry | `{ "decision_id": "..." }` |
-| `commitment_added` | `commitment_ids` array gains an entry | `{ "commitment_id": "..." }` |
-| `commitment_removed` | `commitment_ids` array loses an entry | `{ "commitment_id": "..." }` |
-
-##### Circle events
-
-| Action | Trigger | Metadata |
-|---|---|---|
-| `member_added` | INSERT on `circle_members` | `{ "person_id": "...", "role": "Member" }` |
-| `member_removed` | DELETE on `circle_members` | `{ "person_id": "..." }` |
-| `member_role_changed` | `role` changed on `circle_members` | `{ "person_id": "...", "from": "Member", "to": "Organizer" }` |
-
-##### Initiative events
-
-| Action | Trigger | Metadata |
-|---|---|---|
-| `created` | INSERT | — |
-| `status_changed` | `status` column changed | `{ "from": "Planned", "to": "Active" }` |
-| `circle_linked` | INSERT on `initiative_circles` | `{ "circle_id": "..." }` |
-| `circle_unlinked` | DELETE on `initiative_circles` | `{ "circle_id": "..." }` |
-
-##### Project events
-
-| Action | Trigger | Metadata |
-|---|---|---|
-| `created` | INSERT | — |
-| `lead_changed` | `lead_person_id` changed | `{ "from_person_id": "...", "to_person_id": "..." }` |
-| `circle_linked` | INSERT on `project_circles` | `{ "circle_id": "..." }` |
-| `circle_unlinked` | DELETE on `project_circles` | `{ "circle_id": "..." }` |
-| `update_posted` | INSERT on `project_updates` | `{ "update_id": "...", "health": "On track" }` |
+This approach was chosen over a separate events table for simplicity — the changelog data is always read with its parent entity and doesn't need independent querying.
 
 ## Hard constraints (V1)
 
-- A decision must have exactly **one requestor** (set at creation; always non-null)
 - A decision must have exactly **one circle** (always non-null)
 - A decision must have a **sponsor** when scheduled (non-null at that point; must be a circle member)
 - A decision must have an **owner** when taken (non-null at that point)
 - Before those lifecycle stages, sponsor and owner are nullable
-- A commitment must have exactly **one owner** (always non-null; must be a member of the review circle)
-- A commitment must have exactly **one review circle**
+- A commitment has exactly **one circle** for review
 - A project must belong to exactly **one initiative**
+- An update must be linked to exactly **one** initiative or project (not both)
 
 ## Data integrity
 
-- **Workspace members are soft-deleted** (status set to `Disabled`), never hard-removed. This preserves historical references (requestor, sponsor on past decisions).
-- **Active ownership roles must be reassigned** when a person is disabled — decision owners and commitment owners fall to a circle organizer. The reassignment flow is not yet designed (deferred).
+- **Workspace members are soft-deleted** (`is_active` set to `False`), never hard-removed. This preserves historical references (requestor, sponsor on past decisions).
+- **Active ownership roles must be reassigned** when a person is disabled — the reassignment flow is not yet designed (deferred).
+- All foreign keys to User use `SET_NULL` so historical references remain intact.
 
 ## Cut from V1
 
