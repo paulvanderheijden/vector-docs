@@ -9,7 +9,9 @@ Commitments are the execution layer of Vector. Once a [decision is taken](/lifec
 
 <Steps>
   <Step title="Commitment is created (Active)">
-    A commitment is created — either from a taken decision or standalone. It has a clear title, a single owner, a due date, and a review circle.
+    A commitment is created with a clear title, a single owner, a due date, and a review circle.
+
+    **Who can create:** Any **circle member** can create a commitment during an open session. **Circle chairs** can also create standalone commitments outside of a session. The owner must be a member of the commitment's circle.
 
     Status: **Active**.
   </Step>
@@ -17,31 +19,26 @@ Commitments are the execution layer of Vector. Once a [decision is taken](/lifec
     The commitment appears on the agenda of its review circle's sessions. During each session, the circle checks progress:
 
     - Is it on track? Keep it **Active**.
-    - Is there risk of slippage? Flag it as **At risk**.
-    - Has it been completed? Mark it **Delivered**.
+    - Has it been completed? The **owner** or **circle chair** marks it **Delivered**.
   </Step>
   <Step title="If due date passes: Rolled">
     If the due date passes without delivery, the commitment moves to **Rolled** status. It doesn't disappear — it visibly carries over to the next session.
 
-    Rolled commitments create accountability pressure. The owner must explain why it slipped and when it will be delivered.
+    Rolled commitments create accountability pressure. The owner must explain why it slipped and when it will be delivered. The **circle chair** can reassign the owner or roll the commitment explicitly.
   </Step>
   <Step title="Delivered">
-    The outcome has been completed. The commitment is marked **Delivered** and closed.
+    The outcome has been completed. The **owner** or **circle chair** marks the commitment as **Delivered** and it is closed.
   </Step>
 </Steps>
 
 ## Status transitions
 
-| From | To | Trigger |
-|---|---|---|
-| Active | At risk | Owner or reviewer flags potential slippage |
-| Active | Delivered | Outcome completed |
-| Active | Rolled | Due date passes without delivery |
-| At risk | Active | Risk resolved, back on track |
-| At risk | Delivered | Outcome completed despite risk |
-| At risk | Rolled | Due date passes |
-| Rolled | Active | New due date set, work resumes |
-| Rolled | Delivered | Outcome completed after roll |
+| From | To | Trigger | Who |
+|---|---|---|---|
+| Active | Delivered | Outcome completed | Owner or circle chair |
+| Active | Rolled | Due date passes without delivery | Circle chair |
+| Rolled | Active | New due date set, work resumes | Owner or circle chair |
+| Rolled | Delivered | Outcome completed after roll | Owner or circle chair |
 
 ## The roll mechanic
 
@@ -56,7 +53,7 @@ Rolling is not failure. It's **visible accountability**. The system makes slippa
 
 ## Standalone commitments
 
-Not every commitment needs a parent decision. Forums can create commitments directly for:
+Not every commitment needs a parent decision. **Circle chairs** can create standalone commitments for:
 
 - Action items from discussions
 - Follow-ups from reviews
@@ -64,12 +61,16 @@ Not every commitment needs a parent decision. Forums can create commitments dire
 
 These standalone commitments follow the same lifecycle — they just don't have a decision reference.
 
+## Editing commitments
+
+The commitment outcome and description can be edited by the **owner** or **circle chair**. Only the circle chair can reassign ownership or delete commitments.
+
 ## Review rhythm
 
 Commitments are reviewed on the cadence of their review circle:
 
 - **Weekly circles** — commitments are reviewed every week
 - **Biweekly circles** — commitments are reviewed every two weeks
-- **Manual circles** — commitments are reviewed when sessions are scheduled by the organizer
+- **Manual circles** — commitments are reviewed when sessions are scheduled by the chair
 
 The cadence determines how quickly slippage becomes visible. A weekly circle catches problems faster than a biweekly one.

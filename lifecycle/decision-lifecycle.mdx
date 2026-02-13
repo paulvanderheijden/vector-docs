@@ -14,17 +14,17 @@ Every decision in Vector follows a clear lifecycle. The system is designed so de
     The **requestor** frames the need: "We need to decide X because Y."
   </Step>
   <Step title="A decision is created (Draft)">
-    The decision is created in Vector with a clear title. The requestor is recorded automatically.
+    Any **workspace member** can create a decision — they become the requestor automatically. The decision can be routed to any circle, even one the requestor isn't a member of.
 
-    At this stage the decision is a **Draft**. The requestor (or anyone helping) gathers context, frames options, and prepares it for circle discussion. There is no age counter yet — the decision hasn't been formally submitted.
+    At this stage the decision is a **Draft**. It is visible only to the requestor in My Items — it does not appear in circle views. The requestor gathers context, frames options, and prepares it for circle discussion. There is no age counter yet — the decision hasn't been formally submitted.
   </Step>
   <Step title="Formally submitted (Requested)">
-    The decision moves to **Requested** status and is routed to the appropriate [circle](/concepts/circles). The `requested_date` is auto-set to the current timestamp.
+    The **requestor** moves the decision to **Requested** status. The `requested_date` is auto-set to the current timestamp.
 
-    **The age counter starts ticking.** The decision is now available for an upcoming session.
+    **The age counter starts ticking.** The decision is now visible to circle members and available for an upcoming session.
   </Step>
   <Step title="Placed on the agenda (Scheduled)">
-    A circle organizer places the decision on a specific session's agenda. It moves to **Scheduled** status. A **sponsor** is assigned — the circle member who will prepare and drive the discussion in the session.
+    The **circle chair** places the decision on a specific session's agenda. It moves to **Scheduled** status. The chair assigns a **sponsor** — the circle member who will prepare and drive the discussion in the session.
   </Step>
   <Step title="Discussed in session">
     The decision is discussed in a [session](/concepts/sessions). The sponsor presents the context, the circle debates options, and they work toward resolution.
@@ -32,12 +32,12 @@ Every decision in Vector follows a clear lifecycle. The system is designed so de
     Two outcomes are possible:
   </Step>
   <Step title="Outcome A: Taken">
-    The circle makes the call. The decision moves to **Taken** status. An **owner** is assigned — the person accountable for the decision going forward.
+    The **circle chair** marks the decision as **Taken** and assigns an **owner** — the person accountable for the decision going forward.
 
     [Commitments](/concepts/commitments) are created to execute on the decision — each with its own owner and due date. The decision is closed.
   </Step>
   <Step title="Outcome B: Rolled">
-    The circle didn't resolve it in this session — it needs more time, more context, or more people. The decision moves to **Rolled** status and carries over to the next session.
+    The circle didn't resolve it in this session — it needs more time, more context, or more people. The **circle chair** moves the decision to **Rolled** status and it carries over to the next session.
 
     The age keeps ticking. Rolled decisions create visible pressure — the circle must address them.
   </Step>
@@ -47,11 +47,15 @@ Every decision in Vector follows a clear lifecycle. The system is designed so de
 
 Once taken, the decision is closed. The system transitions from decision mode to execution mode:
 
-1. **An owner is assigned** — the person who tracks whether the decision holds up over time and can revoke it
-2. **Commitments are created** — concrete outcomes with owners and due dates
+1. **An owner is assigned** — the circle chair assigns the person who tracks whether the decision holds up over time
+2. **Commitments are created** — any circle member can create commitments during the open session
 3. **The sponsor's job ends** — they are no longer responsible
 4. **Commitment owners take over** — they execute, report, and are reviewed in sessions
 5. **If reality changes** — the decision owner raises a new decision as a "revisit" linked to the original
+
+## Editing a non-Draft decision
+
+Once a decision is past Draft, the description, discussion, and summary fields can be edited by the **sponsor**, **owner**, or **circle chair**. Only the circle chair can change status, assign roles, or supersede the decision.
 
 <Note>
   There are no zombie decisions in Vector. A decision is either actively moving through its lifecycle or it's been taken. If a taken decision needs revisiting, a new decision is created with an explicit revisit link.
@@ -62,17 +66,21 @@ Once taken, the decision is closed. The system transitions from decision mode to
 ```
 Draft → Requested → Scheduled → Taken
                               ↘ Rolled → (re-enters at Scheduled for the next session)
+
+Any status → Superseded (when replaced by a revisit decision)
 ```
 
 ## When each role is set
 
-| Role | Set at | Responsibility |
-|---|---|---|
-| **Requestor** | Draft created | Raised the need; gets informed of the outcome |
-| **Sponsor** | Scheduled into session | Prepares and drives the decision in the session |
-| **Owner** | Decision taken | Tracks long-term validity; can revoke the decision |
+| Role | Set at | Set by | Responsibility |
+|---|---|---|---|
+| **Requestor** | Draft created | Automatic (the creator) | Raised the need; gets informed of the outcome |
+| **Sponsor** | Scheduled into session | Circle chair | Prepares and drives the decision in the session |
+| **Owner** | Decision taken | Circle chair | Tracks long-term validity; can revoke the decision |
 
 The requestor is **never** the default sponsor. The requestor creates pull; the sponsor ensures resolution.
+
+Both sponsor and owner must be members of the decision's circle.
 
 ## Age as pressure
 

@@ -5,6 +5,8 @@ description: "Execution artifacts that track who will do what by when."
 
 A **commitment** is the second atomic unit in Vector. Where decisions set direction, commitments drive execution. A commitment answers: **who will do what by when?**
 
+Any **circle member** can create a commitment during an open session. **Circle chairs** can also create standalone commitments outside of a session. The owner must be a member of the commitment's circle.
+
 Commitments are reviewed in circle sessions. They have a single owner, a due date, and a status that makes delivery (or slippage) visible.
 
 ## Anatomy of a commitment
@@ -16,7 +18,7 @@ Commitments are reviewed in circle sessions. They have a single owner, a due dat
 | **Owner** | The single person accountable for delivery |
 | **Review circle** | The circle where this commitment is reviewed |
 | **Due** | When it's expected to be delivered |
-| **Status** | Current state: Active, At risk, Rolled, Delivered |
+| **Status** | Current state: Active, Rolled, Delivered |
 | **Decision** | The decision this commitment flows from (optional) |
 
 ## Status values
@@ -24,15 +26,14 @@ Commitments are reviewed in circle sessions. They have a single owner, a due dat
 | Status | Meaning |
 |---|---|
 | **Active** | On track, being worked on |
-| **At risk** | The owner or reviewer has flagged potential slippage |
 | **Rolled** | The due date was missed and the commitment carried over to the next review cycle |
 | **Delivered** | The outcome has been completed |
 
 ## Relationship to decisions
 
-Commitments often flow from decisions — when a decision is taken, the circle creates commitments to execute on it. A single decision can produce multiple commitments with different owners.
+Commitments often flow from decisions — when a decision is taken, circle members create commitments to execute on it. A single decision can produce multiple commitments with different owners. If a commitment is linked to a decision, it must belong to the same circle.
 
-However, commitments can also be **standalone**. Not every commitment needs a parent decision. A circle can create a commitment directly (e.g., "Prepare the board deck by Friday").
+However, commitments can also be **standalone**. Not every commitment needs a parent decision. A circle chair can create a commitment directly (e.g., "Prepare the board deck by Friday").
 
 ## The "roll" mechanic
 
@@ -40,14 +41,17 @@ When a commitment's due date passes without delivery, its status changes to **Ro
 
 Rolled commitments create natural accountability pressure in the circle review.
 
+## Editing commitments
+
+The commitment outcome and description can be edited by the **owner** or **circle chair**. Only the circle chair can reassign ownership, roll commitments, or delete them.
+
 ## Review in sessions
 
 Commitments are reviewed during [sessions](/concepts/sessions). Each session has a list of commitments on its agenda. During the session, the circle checks:
 
 - Is it still active and on track?
-- Should it be flagged as at risk?
-- Has it been delivered?
-- Has it rolled from a previous session?
+- Has it been delivered? The owner or circle chair marks it Delivered.
+- Has it rolled from a previous session? The circle chair addresses it.
 
 <Card title="Commitment Lifecycle" icon="arrows-spin" href="/lifecycle/commitment-lifecycle" horizontal>
   See the full lifecycle of a commitment from creation to delivery.

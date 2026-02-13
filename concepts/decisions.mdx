@@ -5,6 +5,8 @@ description: "Direction-setting artifacts that flow through circles until they'r
 
 A **decision** is the primary atomic unit in Vector. It represents a direction-setting choice that needs to be made by a leadership team.
 
+Any **workspace member** can create a decision — they become the requestor and can route it to any circle, even one they're not a member of. The draft is visible only to the requestor in My Items until it's formally submitted to the circle.
+
 Every decision has a clear title, a circle where it's routed, and an age counter that starts ticking the moment it's formally requested. The longer a decision sits unresolved, the more visible the pressure becomes.
 
 ## Anatomy of a decision
@@ -27,7 +29,7 @@ Every decision has a clear title, a circle where it's routed, and an age counter
 
 <Steps>
   <Step title="Draft">
-    The decision has been created but isn't ready for circle discussion yet. The requestor is framing the problem and gathering initial context.
+    The decision has been created but isn't ready for circle discussion yet. The requestor is framing the problem and gathering initial context. Drafts are visible only to the requestor in My Items — they do not appear in circle views.
   </Step>
   <Step title="Requested">
     The decision is formally submitted to a circle. The age counter starts ticking. It's available for an upcoming session.
@@ -39,7 +41,10 @@ Every decision has a clear title, a circle where it's routed, and an age counter
     The decision was on the agenda but wasn't resolved in the session. It rolls to the next session — the age counter keeps ticking.
   </Step>
   <Step title="Taken">
-    The circle has made the call. An owner is assigned — the person accountable for the decision going forward. The decision is closed and commitments may be created from it.
+    The circle has made the call. The circle chair assigns an owner — the person accountable for the decision going forward. The decision is closed and commitments may be created from it.
+  </Step>
+  <Step title="Superseded">
+    A previous decision has been replaced by a revisit decision. The original is marked Superseded and linked to the new decision.
   </Step>
 </Steps>
 
@@ -51,7 +56,7 @@ Decisions involve three distinct roles, each set at a different point in the lif
 
 The person who raised the need. They create pull ("we need a decision on X because Y is blocked"). Every decision has a requestor — the system always tracks who surfaced the issue. The requestor is informed when the decision is taken.
 
-### Sponsor (set when Scheduled)
+### Sponsor (assigned by the circle chair when Scheduled)
 
 The circle member responsible for getting the decision **prepared and resolved** in a session. They ensure it's framed, has the right context, and is driven to a resolution. The sponsor must be a member of the decision's circle.
 
@@ -59,9 +64,9 @@ The circle member responsible for getting the decision **prepared and resolved**
   The sponsor owns the act of deciding, not the lifetime of the decision. Once taken, their job is done.
 </Note>
 
-### Owner (set when Taken)
+### Owner (assigned by the circle chair when Taken)
 
-The person broadly accountable for the decision after it's taken. They track whether the decision holds up over time and are authorized to revoke it if needed. If reality changes, the owner can raise a revisit decision.
+The person broadly accountable for the decision after it's taken. They track whether the decision holds up over time and are authorized to revoke it if needed. If reality changes, the owner can raise a revisit decision. The owner must be a member of the decision's circle.
 
 <Note>
   The owner is not the same as the commitment owners who execute on the decision. The owner watches over the decision itself — was it the right call?

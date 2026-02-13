@@ -1,150 +1,158 @@
 ---
-title: "Permissions"
-description: "How user permissions are derived from data relationships — not assigned as roles."
+title: "Access Control Spec"
+description: "The authoritative access control specification for Vector — defines who can read, write, and manage every entity."
 ---
 
-Vector does not have an explicit permissions model with role-per-user assignments. Instead, permissions are **derived** from the user's relationship to entities in the system. What a person can do depends on where they are: which workspace they belong to, which circles they're in, and what role they hold in each.
+This document is the **single source of truth** for access control in Vector. Both the backend (API enforcement) and frontend (UI gating) must conform to the rules defined here. Permissions are **derived from relationships** — there are no explicit permission tables.
 
-## Permission contexts
+## Principles
 
-A person's capabilities change based on context. The same person can be an organizer in one circle, a regular member in another, and have no access to a third.
+1. **No permission tables.** Access is derived from workspace membership, circle membership, and entity-role assignments (requestor, sponsor, owner).
+2. **Circles are restricted.** Non-members cannot see that a circle exists, with one exception: the circle picker during decision creation shows circle names to all workspace members (for routing purposes only).
+3. **Anyone can route decisions anywhere.** Any workspace member can create a draft decision and route it to any circle — even one they're not a member of. The draft is visible only to the requestor in My Items.
+4. **Initiatives and projects are workspace-scoped.** All workspace members can see them. Linked decisions/commitments from restricted circles are filtered out per the reader's circle memberships.
+5. **Entity-role access.** A person who holds a role on a specific entity (requestor, sponsor, owner) can access that entity regardless of circle membership.
 
-| Context | Derived from | Description |
+## Roles
+
+| Role | Source | Description |
 |---|---|---|
-| **Workspace Member** | `WorkspaceMember` record exists and `is_active = True` | Base access — the person is in the workspace |
-| **Circle Member** | Listed in `circle_members` with role `Member` | Can see and participate in circle activity |
-| **Circle Organizer** | Listed in `circle_members` with role `Organizer` | Can manage sessions and agendas |
-| **Workspace Admin** | `WorkspaceMember.role = "admin"` | Can manage workspace settings and people |
+| **Workspace Member** | `WorkspaceMember.is_active = True` | Base workspace access |
+| **Workspace Admin** | `WorkspaceMember.role = "admin"` | Workspace management (superset of Workspace Member) |
+| **Circle Member** | `CircleMembership` record exists | Circle content access |
+| **Circle Chair** | `CircleMembership.is_chair = True` | Circle management (superset of Circle Member) |
+| **Entity Role** | `requestor` / `sponsor` / `owner` FK on entity | Access to that specific entity only |
 
-These are not levels in a hierarchy — they're independent contexts that combine. A person could be a workspace admin, an organizer in MT Weekly, a regular member in Product Forum, and have no access to People & Org.
+These are **not hierarchical levels** — they are independent contexts that combine. The same person can be admin of the workspace, chair of one circle, a regular member of another, and have no access to a third.
 
-## Enforcement in Django
+## Read Access
 
-Permissions are enforced at the **application level** via DRF permission classes and viewset mixins:
-
-| Layer | Mechanism | What it checks |
-|---|---|---|
-| **Request entry** | `HasWorkspaceAccess` permission class | User has active `WorkspaceMember` for the workspace slug in the URL |
-| **Queryset filtering** | `WorkspaceScopedViewSetMixin` | All queries scoped to the workspace in the URL |
-| **Object-level** | Custom permission classes per entity (future) | Circle membership, organizer role, ownership checks |
-| **Superuser** | `IsSuperUser` permission class | Bypasses workspace scoping for admin endpoints |
-
-```python
-# Example: a workspace-scoped viewset with workspace access check
-class DecisionViewSet(WorkspaceScopedViewSetMixin, viewsets.ModelViewSet):
-    queryset = Decision.objects.all()
-    serializer_class = DecisionSerializer
-    permission_classes = [HasWorkspaceAccess]
-```
-
-## Capability matrix
-
-### Decisions
-
-| Action | Workspace Member | Circle Member | Circle Organizer |
-|---|---|---|---|
-| Create a draft decision | yes | yes | yes |
-| Edit own draft | yes | yes | yes |
-| Propose a decision to a circle | yes | yes | yes |
-| View decisions in a circle | — | yes | yes |
-| Be assigned as sponsor | — | yes (own circle) | yes (own circle) |
-| Schedule a decision for a session | — | — | yes |
-
-### Commitments
-
-| Action | Workspace Member | Circle Member | Circle Organizer |
-|---|---|---|---|
-| View commitments in a circle | — | yes | yes |
-| Be assigned as commitment owner | — | yes (own circle) | yes (own circle) |
-| Update own commitment status | — | yes | yes |
-
-### Sessions
-
-| Action | Workspace Member | Circle Member | Circle Organizer |
-|---|---|---|---|
-| View sessions in a circle | — | yes | yes |
-| Attend a session | — | yes | yes |
-| Reorder decisions on agenda | — | — | yes |
-| Add/remove decisions from agenda | — | — | yes |
-| Mark session as completed | — | — | yes |
-| Edit meeting notes | — | yes | yes |
-
-### Initiatives & Projects
-
-| Action | Workspace Member | Circle Member | Circle Organizer |
-|---|---|---|---|
-| View public initiatives/projects | yes | yes | yes |
-| View restricted initiatives/projects | only if member of a linked circle | only if member of a linked circle | only if member of a linked circle |
-| Create project updates | yes (if project lead) | yes (if project lead) | yes (if project lead) |
-
-### Workspace (Admin only)
-
-| Action | Workspace Member | Workspace Admin |
-|---|---|---|
-| View workspace settings | — | yes |
-| Invite/remove people | — | yes |
-| Create/edit/delete circles | — | yes |
-| Manage circle membership | — | yes |
-| Create/edit initiatives | — | yes |
-
-## How permissions are derived
-
-There are no permission tables. The system checks relationships at query time:
-
-```
-Can this person see decisions in MT Weekly?
-  → Is the person in mt_weekly.members?
-    → Yes → allow
-    → No → deny
-
-Can this person be assigned as sponsor for a decision in Product Forum?
-  → Is the person in product_forum.members?
-    → Yes → allow
-    → No → deny
-
-Can this person schedule decisions for a session?
-  → Is the person in the circle's members with role = Organizer?
-    → Yes → allow
-    → No → deny
-
-Can this person invite new members to the workspace?
-  → Is the person's WorkspaceMember.role = "admin"?
-    → Yes → allow
-    → No → deny
-```
-
-## Key constraints
-
-| Rule | Enforced by |
+| Entity | Who can read |
 |---|---|
-| A decision sponsor must be a member of the decision's circle | Validated in serializer/view when setting `sponsor_person_id` |
-| A commitment owner must be a member of the review circle | Validated in serializer/view when setting `owner_person_id` |
-| Circle content is only visible to circle members | Queryset filtering by membership in the viewset |
-| Only organizers can manage session agendas | Permission check on `circle_members` role |
-| Only workspace admins can manage workspace settings | `HasWorkspaceAccess` + admin role check |
+| Workspace list | Authenticated user (own workspaces only) |
+| People list | Workspace member |
+| Circle metadata (name, icon, cadence) | Circle members and workspace admins only. **Exception:** circle picker during decision creation shows circle names to all workspace members. |
+| Circle content (decisions, commitments, sessions, members) | Circle member |
+| Decisions in a circle | Circle member (excludes Drafts — Drafts visible only to requestor) |
+| Own decisions (My Items) | Requestor, sponsor, or owner — regardless of circle membership |
+| Commitments in a circle | Circle member |
+| Own commitments (My Items) | Commitment owner — regardless of circle membership |
+| Sessions in a circle | Circle member |
+| Initiatives | All workspace members |
+| Projects | All workspace members |
+| Project → linked decisions | Only decisions from circles the user is a member of (or where the user has a role on that decision) |
+| Project → linked commitments | Only commitments from circles the user is a member of (or where the user has a role on that commitment) |
+| Updates | All workspace members |
+| Strategy | All workspace members |
 
-## Soft-delete and disabled members
+## Write Access — Decisions
 
-Workspace members are never hard-deleted. When a person is removed from a workspace, their `WorkspaceMember.is_active` is set to `False`. The `HasWorkspaceAccess` permission class only allows access for members with `is_active = True`, which immediately revokes all permissions derived from workspace membership.
+| Action | Who |
+|---|---|
+| Create draft | Any workspace member (becomes requestor). Can route to any circle. |
+| Edit draft (statement, description, circle) | Requestor |
+| Submit (Draft → Requested) | Requestor |
+| View in circle (Requested+) | Circle member |
+| Schedule (Requested → Scheduled) | Circle chair |
+| Assign sponsor | Circle chair |
+| Take (Scheduled → Taken) | Circle chair |
+| Assign owner | Circle chair |
+| Roll (Scheduled → Rolled) | Circle chair |
+| Supersede | Circle chair |
+| Edit description, discussion, summary (non-Draft) | Sponsor, owner, or circle chair |
+| Delete draft | Requestor |
 
-Historical references (e.g., requestor or sponsor on past decisions) remain intact because the person record is not deleted.
+## Write Access — Commitments
 
-## What happens when membership changes
+| Action | Who |
+|---|---|
+| Create (in open session) | Any circle member |
+| Create (standalone, outside session) | Circle chair |
+| Edit outcome, description | Owner or circle chair |
+| Change status (Active → Delivered) | Owner or circle chair |
+| Roll (Active → Rolled) | Circle chair |
+| Reassign owner | Circle chair |
+| Delete | Circle chair |
+
+## Write Access — Sessions
+
+| Action | Who |
+|---|---|
+| Create | Circle chair |
+| Edit title, date | Circle chair |
+| Assign/change chair | Circle chair or workspace admin |
+| Add/remove/reorder decisions on agenda | Circle chair |
+| Add/remove commitments | Circle chair |
+| Edit meeting notes | Any circle member (while session is Open) |
+| Close (Open → Closed) | Circle chair |
+| Cancel (Open → Cancelled) | Circle chair |
+| Reopen (Closed/Cancelled → Open) | Circle chair |
+
+## Write Access — Initiatives
+
+| Action | Who |
+|---|---|
+| Create | Workspace admin |
+| Edit (title, summary, description, status, target, icon) | Initiative owner or workspace admin |
+| Assign/change owner | Workspace admin |
+| Delete | Workspace admin |
+
+## Write Access — Projects
+
+| Action | Who |
+|---|---|
+| Create | Workspace admin or initiative owner |
+| Edit (title, description) | Project owner or workspace admin |
+| Assign/change owner | Workspace admin or initiative owner |
+| Link to initiative | Workspace admin or initiative owner |
+| Delete | Workspace admin |
+
+## Write Access — Updates
+
+| Action | Who |
+|---|---|
+| Create (for initiative) | Initiative owner or workspace admin |
+| Create (for project) | Project owner or workspace admin |
+| Edit | Author |
+| Delete | Author or workspace admin |
+
+## Write Access — Strategy
+
+| Action | Who |
+|---|---|
+| Edit | Workspace admin |
+
+## Write Access — Workspace Administration
+
+| Action | Who |
+|---|---|
+| Edit workspace settings | Workspace admin |
+| Invite member | Workspace admin |
+| Disable member | Workspace admin |
+| Change member role | Workspace admin |
+| Create/edit/delete circles | Workspace admin |
+| Manage circle membership | Workspace admin or circle chair (own circle) |
+| Set/unset chair | Workspace admin |
+
+## Validation Rules (FK Constraints)
+
+These rules ensure data integrity and must be enforced in serializers/views on every write.
+
+| Rule | Enforced on |
+|---|---|
+| Decision sponsor must be a member of the decision's circle | Assign sponsor |
+| Decision owner must be a member of the decision's circle | Assign owner |
+| Commitment owner must be a member of the commitment's circle | Create / reassign |
+| Session chair must be a member of the session's circle | Assign chair |
+| Decision can only be scheduled to a session in the same circle | Schedule |
+| Commitment circle must match its linked decision's circle (if linked) | Create / link |
+
+## Membership Lifecycle
 
 | Event | Effect |
 |---|---|
-| Person removed from a circle | Loses access to circle content. Existing sponsorships and commitment ownerships remain but should be reassigned. |
-| Person added to a circle | Immediately sees all circle content (decisions, commitments, sessions). |
-| Person promoted to organizer | Gains session management capabilities in that circle. |
-| Person demoted from organizer to member | Loses session management capabilities but retains all member access. |
-| Person disabled in workspace | Loses all active access (`is_active = False`). Historical references preserved. Active decision ownerships and commitment ownerships must be reassigned — the reassignment flow is not yet designed (deferred). |
-
-## Why not explicit roles?
-
-An explicit permission model (e.g., role-based access control with a permissions table) would require maintaining role assignments separately from the data. In Vector, the data *is* the permission model:
-
-- Being in a circle's member list = having circle access
-- Having the organizer role = having management rights
-- Being a workspace admin = having workspace management rights
-
-This means there's no drift between "what the system thinks you can do" and "what your actual relationship to the data is." When a person leaves a circle, their permissions are gone — there's no orphaned role entry to clean up.
+| Added to circle | Immediately sees all circle content |
+| Removed from circle | Loses circle access. Existing role assignments (sponsor, owner) remain but should be reassigned. |
+| Made chair | Gains management capabilities in that circle |
+| Unset as chair | Loses management capabilities, retains member access |
+| Disabled in workspace | Loses **all** access. Historical references preserved. Active roles should be reassigned. |
