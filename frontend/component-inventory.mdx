@@ -137,7 +137,7 @@ Centralized icon map for all domain entities. Renders the canonical Lucide icon 
 |---|---|
 | `decision` | `Split` |
 | `commitment` | `Hexagon` |
-| `session` | `MessageCircleMore` |
+| `session` | `CirclePlay` |
 | `circle` | `SquareUserRound` |
 | `initiative` | `Rocket` |
 | `project` | `Box` |
@@ -297,7 +297,7 @@ When `title` is provided and the field is editable, the dropdown prepends a "No 
 
 `src/components/StatusField.tsx`
 
-Config-driven status display with icon + text. Supports three entity types (decision, commitment, initiative) via a `type` prop — no `options` prop needed, options are derived from an internal config map. Read-only renders a `<span>` with colored icon + muted label. Editable renders a `<button>` trigger (matching PersonField style: `rounded px-1.5 py-0.5 hover:bg-muted`) that opens a popover dropdown with all status options for that type.
+Config-driven status display with icon + text. Supports four entity types (decision, commitment, initiative, session) via a `type` prop. Options are derived from an internal config map, with an optional `options` prop to filter and order the dropdown choices. Read-only renders a `<span>` with colored icon + muted label. Editable renders a `<button>` trigger (matching PersonField style: `rounded px-1.5 py-0.5 hover:bg-muted`) that opens a popover dropdown with all status options for that type.
 
 Also exports a `getStatusConfig(type, value)` helper for external icon/color lookup, and a `StatusType` union type.
 
@@ -307,6 +307,7 @@ Also exports a `getStatusConfig(type, value)` helper for external icon/color loo
 | `value` | `string` | required | Current status value (e.g. `"Draft"`, `"Active"`, `"active"`) |
 | `editable` | `boolean` | `false` | Enable click-to-pick mode |
 | `onSelect` | `(value: string) => void` | — | Selection handler (returns the config map key) |
+| `options` | `string[]?` | — | Filter and order dropdown choices (preserves caller order) |
 | `className` | `string?` | — | Additional styling |
 
 **Config map:**
@@ -320,7 +321,6 @@ Also exports a `getStatusConfig(type, value)` helper for external icon/color loo
 | decision | Rolled | `RotateCw` | `text-red-600` |
 | decision | Superseded | `CircleSlash` | `text-muted-foreground` |
 | commitment | Active | `CircleDot` | `text-blue-600` |
-| commitment | At risk | `CircleAlert` | `text-amber-600` |
 | commitment | Delivered | `CircleCheck` | `text-green-600` |
 | commitment | Rolled | `RotateCw` | `text-red-600` |
 | initiative | active | `CircleDot` | `text-blue-600` |
@@ -330,7 +330,7 @@ Also exports a `getStatusConfig(type, value)` helper for external icon/color loo
 | session | Closed | `CircleCheck` | `text-green-600` |
 | session | Cancelled | `CircleX` | `text-muted-foreground` |
 
-Lowercase aliases (`draft`, `requested`, `atRisk`, etc.) are supported for `ProjectDecisionStatus` / `ProjectCommitmentStatus` values.
+Lowercase aliases (`draft`, `requested`, `scheduled`, `taken`, `rolled`, `active`, `delivered`, etc.) are supported for `ProjectDecisionStatus` / `ProjectCommitmentStatus` values.
 
 **Used in:** DecisionsTable (status cell, combined statusOwner cell), CommitmentsTable (status cell), Inbox (EntityList), MyItems (EntityList), DecisionDetail (inline status), CommitmentDetail (inline status, linked decision), SessionDetail (properties, drawer decision status), InitiativeDetail (inline + sidebar status), ProjectDetail (EntityList items)
 
@@ -387,7 +387,7 @@ Commitment entity pill: EntityIcon (commitment) + ref label + outcome (tooltip f
 
 `src/components/CircleField.tsx`
 
-Circle display: colored circle icon + name. Renders as `Link` (to circle sessions page) by default; set `linked={false}` for static display.
+Circle display: colored circle icon + name. Renders as `Link` (to circle sessions page) by default; set `linked={false}` for static display. The icon is looked up from `lucide-react`'s `icons` record using the circle's `icon` field returned by the API.
 
 | Prop | Type | Default | Description |
 |---|---|---|---|
@@ -426,6 +426,21 @@ Health display with popover showing full update details. Accepts an `updateId` a
 
 **Used in:** InitiativesList, InitiativeDetail (properties), ProjectsList, ProjectDetail (properties + sidebar)
 
+### TargetDateField
+
+`src/components/TargetDateField.tsx`
+
+Flexible target date picker with granularity switching. Supports Day, Month, Quarter, Half-year, and Year granularity via tabs. Auto-detects granularity from current value (e.g. "Q1 2026" → Quarter, "Mar 2026" → Month). Renders a button trigger with CalendarDays icon that opens a popover with text input + granularity tabs + date grid. Supports clearing via XCircle button.
+
+| Prop | Type | Default | Description |
+|---|---|---|---|
+| `value` | `string \| null` | — | Current value (e.g. "Q1 2026", "Mar 2026", "2026-03-15") |
+| `onChange` | `(value: string \| null) => void` | — | Change handler; `null` when cleared |
+| `placeholder` | `string?` | `"Set target date"` | Placeholder text when no value |
+| `className` | `string?` | — | Additional styling |
+
+**Used in:** InitiativeDetail (inline + sidebar properties)
+
 ### SectionHeading
 
 `src/components/SectionHeading.tsx`
@@ -460,7 +475,7 @@ Inline property picker. Clickable trigger opens a popover with options. Each opt
 | `onSelect` | `(value) => void` | Selection handler |
 | `triggerClassName` | `string?` | Custom trigger styling |
 
-**Used in:** InitiativeDetail (target), ProjectDetail (visibility, owner)
+**Used in:** InitiativeDetail (target), ProjectDetail (owner)
 
 ### MarkdownEditor
 
@@ -532,13 +547,13 @@ These are standard shadcn/ui components. Not documented individually here, but t
 
 | Primitive | Notable usage |
 |---|---|
-| `DataTable` | Base for DecisionsTable, CommitmentsTable, and direct use in CirclesList, InitiativesList, ProjectsList, SessionsList, InitiativeDetail |
+| `DataTable` | Base for DecisionsTable, CommitmentsTable, and direct use in InitiativesList, ProjectsList, SessionsList, InitiativeDetail |
 | `Badge` | Session badges, misc labels (status badges replaced by `StatusField`) |
 | `Avatar` | Person display throughout the app |
 | `Button` | Actions, filters, toggles |
 | `Checkbox` | DataTable (row selection) |
-| `Popover` | Filter/Display dropdowns, PropertySelect, PersonSelector, icon picker |
-| `Select` | Filter dropdowns (health, owner), invite selector |
+| `Popover` | Filter/Display dropdowns, PropertySelect, PersonField, icon picker |
+| `Select` | Filter dropdowns (health, owner) |
 | `Sidebar*` | AppSidebar |
 | `Collapsible` | AppSidebar circle sections, DetailSidebar sections |
 | `ScrollArea` | App shell main content area |
@@ -555,10 +570,38 @@ Allows pages to inject their header content into the App shell's sticky header v
 
 **Used in:** every page
 
+### useDebouncedSave
+
+`src/hooks/useDebouncedSave.ts`
+
+Debounces save calls for fields that fire onChange on every keystroke (e.g. MarkdownEditor / TipTap). Returns a debounced function that merges successive patches and flushes pending saves on unmount.
+
+```tsx
+const debouncedSave = useDebouncedSave(
+  (patch) => updateDecision.mutate({ slug, ...patch }),
+  800 // delay in ms (default)
+)
+
+// In MarkdownEditor onChange:
+onChange={(v) => { set("description", v); debouncedSave({ description: v }) }}
+```
+
+| Param | Type | Default | Description |
+|---|---|---|---|
+| `saveFn` | `(patch: Record<string, unknown>) => void` | required | The mutation call to debounce |
+| `delay` | `number` | `800` | Debounce delay in milliseconds |
+
+**Behavior:**
+- Successive calls within the delay window are merged (e.g. `{ description: "a" }` + `{ summary: "b" }` → `{ description: "a", summary: "b" }`)
+- Pending saves are flushed on component unmount via `useEffect` cleanup
+- Uses `useRef` internally to avoid stale closure issues
+
+**Used in:** DecisionDetail (description, discussion, summary), CommitmentDetail (description), InitiativeDetail (description), SessionDetail (notes)
+
 ### useWorkspace
 
 `src/lib/workspace-context.tsx`
 
-Returns the active workspace context: `activeWorkspaceId`, `setActiveWorkspaceId`, `workspace` (current `Workspace` object), and `workspaces` (all workspaces the user has access to). Must be used within `WorkspaceProvider`.
+Returns the active workspace context: `activeWorkspaceId`, `setActiveWorkspaceId`, `workspace` (current `Workspace` object), `workspaces` (all workspaces the user has access to), and `basePath` (workspace-prefixed URL base, e.g. `/w/mews`). Must be used within `WorkspaceProvider`.
 
-**Used in:** AppSidebar, Inbox, MyItems, InitiativesList, ProjectsList, Strategy
+**Used in:** AppSidebar, Inbox, MyItems, InitiativesList, ProjectsList, ProjectDetail, InitiativeDetail, CircleDecisions, CircleCommitments, SessionsList, SessionDetail, DecisionDetail, CommitmentDetail, Strategy
