@@ -1,0 +1,71 @@
+---
+title: Deployment Overview
+description: How Vector's three services are hosted on Railway
+---
+
+## Architecture
+
+Vector is a monorepo with three services that deploy independently:
+
+| Service | Directory | Runtime | Purpose |
+|---|---|---|---|
+| **Backend** | `/backend` | Python / Django | REST API, auth, migrations |
+| **Frontend** | `/frontend` | Static (Vite build) | Single-page React app |
+| **Collab** | `/collab` | Node.js | Real-time collaborative editing (Hocuspocus + Yjs) |
+
+All three services share a single **PostgreSQL** database per environment.
+
+## Railway project layout
+
+Each environment is a separate Railway project containing four resources:
+
+```
+vector-production/
+├── backend        (Django, gunicorn)
+├── frontend       (Static site, Vite)
+├── collab         (Node.js, Hocuspocus)
+└── PostgreSQL     (Railway plugin)
+```
+
+## How services connect
+
+```
+┌──────────┐   HTTPS    ┌──────────┐   DATABASE_URL   ┌────────────┐
+│ Frontend │ ────────── │ Backend  │ ───────────────── │ PostgreSQL │
+└──────────┘            └──────────┘                   └────────────┘
+      │                                                      │
+      │   WSS     ┌──────────┐   DATABASE_URL                │
+      └────────── │  Collab  │ ──────────────────────────────┘
+                  └──────────┘
+```
+
+- **Frontend → Backend** — The React app calls the Django REST API over HTTPS. The base URL is configured via `VITE_API_URL`.
+- **Frontend → Collab** — TipTap connects to the Hocuspocus WebSocket server. The URL is configured via `VITE_COLLAB_WS_URL` (must use `wss://`).
+- **Backend → PostgreSQL** — Django connects using `DATABASE_URL`, auto-injected by Railway's Postgres plugin.
+- **Collab → PostgreSQL** — Hocuspocus persists Yjs documents to the same database using `DATABASE_URL`.
+- **Collab ↔ Backend** — The collab server validates JWTs using the same `SECRET_KEY` (passed as `JWT_SECRET`). No direct HTTP calls between them.
+
+## Environments
+
+Vector runs three environments, each a separate Railway project with its own database:
+
+| Environment | Branch | Purpose |
+|---|---|---|
+| **Production** | `main` | Live users |
+| **Acceptance** | `develop` | QA and stakeholder review |
+| **Demo** | `demo` | Sales demos with seed data |
+
+See [Environments](/deployment/environments) for details on configuration differences.
+
+## Key environment variables
+
+These variables tie the services together in each Railway project:
+
+| Variable | Used by | Source |
+|---|---|---|
+| `DATABASE_URL` | Backend, Collab | Auto-injected by Railway Postgres plugin |
+| `SECRET_KEY` | Backend | Set manually per environment |
+| `JWT_SECRET` | Collab | Must match backend's `SECRET_KEY` |
+| `VITE_API_URL` | Frontend (build-time) | Backend's public Railway URL |
+| `VITE_COLLAB_WS_URL` | Frontend (build-time) | Collab's public Railway URL with `wss://` |
+| `FRONTEND_URL` | Backend | Frontend's public Railway URL (for CORS) |

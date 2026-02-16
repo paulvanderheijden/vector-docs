@@ -107,6 +107,36 @@
         ]
       },
       {
+        "tab": "Collaboration",
+        "groups": [
+          {
+            "group": "Real-Time Editing",
+            "pages": [
+              "collab/index"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "Deployment",
+        "groups": [
+          {
+            "group": "Overview",
+            "pages": [
+              "deployment/index"
+            ]
+          },
+          {
+            "group": "Setup",
+            "pages": [
+              "deployment/railway",
+              "deployment/environments",
+              "deployment/github"
+            ]
+          }
+        ]
+      },
+      {
         "tab": "Database",
         "groups": [
           {

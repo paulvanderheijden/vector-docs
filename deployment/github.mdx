@@ -1,0 +1,148 @@
+---
+title: GitHub & CI/CD
+description: Branch strategy, CI checks, and Railway auto-deploy
+---
+
+## Branch strategy
+
+Vector uses a three-branch model mapped to Railway environments:
+
+| Branch | Deploys to | Merge direction |
+|---|---|---|
+| `main` | Production | `develop` → `main` (via PR) |
+| `develop` | Acceptance | Feature branches → `develop` (via PR) |
+| `demo` | Demo | Cherry-pick or merge from `main` |
+
+### Workflow
+
+1. Create a feature branch from `develop`
+2. Open a PR targeting `develop`
+3. CI checks run automatically (lint, typecheck, tests)
+4. After review and passing checks, merge to `develop` — auto-deploys to acceptance
+5. After QA on acceptance, open a PR from `develop` to `main`
+6. Merge to `main` — auto-deploys to production
+
+## Railway auto-deploy
+
+Railway watches the configured branch for each project and deploys automatically on push:
+
+- **No manual deploy step** — merging a PR triggers the build
+- **All three services rebuild** — backend, frontend, and collab all redeploy when their root directory has changes
+- **Rollback** — Use Railway's dashboard to roll back to a previous deployment if needed
+
+### Build triggers
+
+Railway only rebuilds a service when files in its root directory change. For example, a backend-only change won't trigger a frontend redeploy.
+
+| File changed | Services rebuilt |
+|---|---|
+| `backend/**` | Backend only |
+| `frontend/**` | Frontend only |
+| `collab/**` | Collab only |
+| Root files (`package.json`, etc.) | May trigger all services |
+
+## PR preview environments
+
+Railway supports PR deploy previews — temporary environments spun up for each pull request.
+
+To enable:
+
+1. In the Railway project settings, enable **PR Deploys**
+2. Each PR gets its own isolated environment with a unique URL
+3. The preview environment is torn down when the PR is closed or merged
+
+<Note>
+  PR previews create a separate Postgres instance. Migrations run during the build, but no seed data is loaded. Run `python manage.py seed` via Railway's CLI if needed.
+</Note>
+
+## GitHub Actions CI
+
+Add a CI workflow to run checks before PRs can be merged.
+
+### Workflow file
+
+Create `.github/workflows/ci.yml`:
+
+```yaml
+name: CI
+
+on:
+  pull_request:
+    branches: [main, develop]
+
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.14"
+      - run: pip install -r requirements.txt
+      - run: python manage.py check --deploy
+        env:
+          DATABASE_URL: sqlite:///db.sqlite3
+          SECRET_KEY: ci-test-key
+
+  frontend:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - run: npm ci
+      - run: npx tsc --noEmit
+      - run: npm run lint
+
+  collab:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: collab
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - run: npm ci
+      - run: npx tsc --noEmit
+```
+
+### What each job checks
+
+| Job | Checks |
+|---|---|
+| `backend` | Dependencies install, Django system checks pass |
+| `frontend` | TypeScript compiles, ESLint passes |
+| `collab` | TypeScript compiles |
+
+## Branch protection
+
+Protect the `main` branch in GitHub repository settings:
+
+1. Go to **Settings → Branches → Branch protection rules**
+2. Add a rule for `main`:
+   - **Require a pull request before merging** — no direct pushes
+   - **Require status checks to pass** — select the `backend`, `frontend`, and `collab` CI jobs
+   - **Require branches to be up to date** — ensures the PR is tested against the latest `main`
+3. Optionally protect `develop` with the same rules (recommended)
+
+## Deployment checklist
+
+Before the first production deploy:
+
+- [ ] Add `gunicorn` to `backend/requirements.txt`
+- [ ] Update `frontend/src/lib/api.ts` to read `VITE_API_URL` from environment
+- [ ] Set all environment variables in each Railway project
+- [ ] Generate unique `SECRET_KEY` values per environment
+- [ ] Configure custom domains and DNS records
+- [ ] Enable branch protection on `main`
+- [ ] Set up the CI workflow in `.github/workflows/ci.yml`
+- [ ] Run `python manage.py seed` in the demo environment

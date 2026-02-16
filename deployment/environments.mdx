@@ -1,0 +1,82 @@
+---
+title: Environments
+description: Production, acceptance, and demo environment configuration
+---
+
+## Overview
+
+Vector runs three isolated environments. Each is a separate Railway project with its own PostgreSQL database.
+
+| Environment | Railway project | Branch | Purpose | URL pattern |
+|---|---|---|---|---|
+| **Production** | `vector-production` | `main` | Live users | `vector.up.railway.app` |
+| **Acceptance** | `vector-acceptance` | `develop` | QA and stakeholder review | `vector-acc.up.railway.app` |
+| **Demo** | `vector-demo` | `demo` | Sales demos with seed data | `vector-demo.up.railway.app` |
+
+## Branch mapping
+
+Each Railway project is connected to the same GitHub repository but deploys from a different branch:
+
+```
+main     ──► vector-production
+develop  ──► vector-acceptance
+demo     ──► vector-demo
+```
+
+Pushing to the mapped branch triggers an automatic Railway deploy for all three services in that project.
+
+## Environment variable differences
+
+Most variables are the same across environments. Key differences:
+
+| Variable | Production | Acceptance | Demo |
+|---|---|---|---|
+| `DEBUG` | `False` | `False` | `False` |
+| `SECRET_KEY` | (unique) | (unique) | (unique) |
+| `ALLOWED_HOSTS` | `vector.app,*.up.railway.app` | `*.up.railway.app` | `*.up.railway.app` |
+| `FRONTEND_URL` | `https://app.vector.com` | `https://vector-acc.up.railway.app` | `https://vector-demo.up.railway.app` |
+
+<Note>
+  Every environment gets its own `SECRET_KEY`. Never share keys across environments.
+</Note>
+
+## Database isolation
+
+Each environment has a completely separate PostgreSQL instance:
+
+- **No shared data** between environments
+- Migrations run independently per environment (during Railway build)
+- Destructive testing in acceptance never affects production
+
+## Demo environment
+
+The demo environment has special behavior:
+
+- **Seed data** — Run `python manage.py seed` after initial deploy to populate the database with realistic mock data (15 users, 6 circles, 31 decisions, 37 commitments, 18 sessions)
+- **Resettable** — The database can be wiped and re-seeded between sales demos
+- **Login** — Use the dev credentials (`matt.welle@mews.com` / `vector123`) for demo walkthroughs
+- **Branch** — The `demo` branch can diverge from `main` to include demo-specific features or data
+
+## Custom domains
+
+Configure custom domains for production:
+
+| Service | Domain | Railway setting |
+|---|---|---|
+| Frontend | `app.vector.com` | Custom domain in service settings |
+| Backend | `api.vector.com` | Custom domain in service settings |
+| Collab | `collab.vector.com` | Custom domain in service settings |
+
+For acceptance and demo, use the default Railway-generated URLs.
+
+### DNS setup
+
+Add CNAME records pointing to Railway's domain:
+
+```
+app.vector.com     CNAME  vector.up.railway.app
+api.vector.com     CNAME  vector-api.up.railway.app
+collab.vector.com  CNAME  vector-collab.up.railway.app
+```
+
+Railway handles SSL certificates automatically.
