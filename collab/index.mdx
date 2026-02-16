@@ -1,0 +1,185 @@
+---
+title: "Real-Time Collaboration"
+description: "How Vector enables concurrent editing of markdown fields using CRDTs and WebSockets."
+---
+
+Vector supports real-time collaborative editing on all markdown fields — session notes, decision descriptions and discussion, commitment descriptions, and initiative descriptions. Multiple users can edit the same field simultaneously without overwriting each other's changes.
+
+## Architecture
+
+The collaboration system has three components:
+
+```
+Frontend (TipTap + Yjs)          Hocuspocus (Node.js)         PostgreSQL
+────────────────────────         ────────────────────         ──────────
+MarkdownEditor                   WebSocket server
+  └─ Collaboration extension       └─ onAuthenticate:
+     (binds to Y.Doc)                  validate Django JWT
+  └─ HocuspocusProvider            └─ onLoadDocument:
+     (ws://localhost:8001)             load Yjs state from DB
+                                    └─ onStoreDocument:
+                                       persist Yjs state to DB
+                                       + sync markdown back
+                                         to entity field
+```
+
+| Component | Role |
+|---|---|
+| **Yjs** | CRDT library — merges concurrent edits without conflicts |
+| **Hocuspocus** | WebSocket server that relays Yjs updates between clients and persists document state |
+| **TipTap Collaboration** | TipTap extension that binds a ProseMirror editor to a shared Y.Doc |
+
+## How it works
+
+### Connection flow
+
+1. A `MarkdownEditor` receives a `documentName` prop (e.g. `mews:session:42:notes`)
+2. The editor creates a `Y.Doc` and a `HocuspocusProvider` pointing to the Hocuspocus server
+3. The provider sends the user's JWT access token for authentication
+4. Hocuspocus verifies the JWT (same secret as Django) and loads any persisted Yjs state from PostgreSQL
+5. The TipTap `Collaboration` extension binds the editor to the shared `Y.Doc`
+6. Edits from any connected client are broadcast to all others via WebSocket
+
+### Persistence
+
+Hocuspocus persists on every document change:
+
+1. **Yjs binary state** — the full CRDT state is stored in `core_collaborationdocument.state` (bytea column), keyed by `document_name`
+2. **Markdown sync-back** — the server walks the Yjs XML tree, extracts markdown, and writes it to the entity's text field in the Django model (e.g. `core_session.notes`)
+
+This dual-write ensures that:
+- Reloading the page restores the exact collaborative state (from Yjs binary)
+- The REST API always returns up-to-date content (from the Django model field)
+- Non-collaborative reads (exports, search) work without Yjs
+
+### Document naming convention
+
+Every collaborative document is identified by a string with four colon-separated parts:
+
+```
+{workspace_slug}:{entity_type}:{entity_id}:{field_name}
+```
+
+| Example | Entity | Field |
+|---|---|---|
+| `mews:session:42:notes` | Session #42 | Notes |
+| `mews:decision:17:description` | Decision 17 | Description |
+| `mews:decision:17:discussion` | Decision 17 | Discussion |
+| `mews:commitment:5:description` | Commitment 5 | Description |
+| `mews:initiative:3:description` | Initiative 3 | Description |
+
+The workspace slug is embedded in the document name — no separate workspace FK is needed on the `CollaborationDocument` model.
+
+## Collaborative fields
+
+The following fields are collaborative. When the `MarkdownEditor` receives a `documentName`, it enters collaborative mode — Yjs owns the content and Hocuspocus handles persistence. The `onChange` callback and debounced save remain as a fallback for non-collaborative usage.
+
+| Page | Field | Document name pattern |
+|---|---|---|
+| Session detail | Notes | `{ws}:session:{id}:notes` |
+| Decision detail | Description | `{ws}:decision:{id}:description` |
+| Decision detail | Discussion | `{ws}:decision:{id}:discussion` |
+| Commitment detail | Description | `{ws}:commitment:{id}:description` |
+| Initiative detail | Description | `{ws}:initiative:{id}:description` |
+| Circle incoming | Description (selected decision) | `{ws}:decision:{id}:description` |
+
+## Hocuspocus server
+
+The Hocuspocus server runs as a separate Node.js process in the `collab/` directory of the monorepo.
+
+### Configuration
+
+| Environment variable | Default | Description |
+|---|---|---|
+| `PORT` | `8001` | WebSocket server port |
+| `JWT_SECRET` | Django dev default | Must match Django's `SECRET_KEY` |
+| `DATABASE_URL` | `postgresql://localhost:5432/vector` | Same PostgreSQL database as Django |
+
+### Authentication
+
+Hocuspocus validates the JWT access token on every WebSocket connection using the same HS256 secret as Django's SimpleJWT. The token is sent by the frontend's `HocuspocusProvider` via the `token` option, which calls `getAccessToken()` from the auth module.
+
+If authentication fails, the WebSocket connection is rejected.
+
+### Markdown extraction
+
+When persisting a document, the server walks the Yjs `XmlFragment` (the ProseMirror/TipTap document tree) and converts it to markdown. This runs entirely in Node.js without TipTap as a dependency — the server maps element types (`paragraph`, `heading`, `bulletList`, etc.) and text marks (`bold`, `italic`, `code`, `link`) to their markdown equivalents.
+
+### Entity field mapping
+
+The server maintains a static allow-list mapping document name patterns to database tables and columns:
+
+```typescript
+const entityFieldMap = {
+  "session:notes":          { table: "core_session",    fieldColumn: "notes" },
+  "decision:description":   { table: "core_decision",   fieldColumn: "description" },
+  "decision:discussion":    { table: "core_decision",   fieldColumn: "discussion" },
+  "commitment:description": { table: "core_commitment", fieldColumn: "description" },
+  "initiative:description": { table: "core_initiative",  fieldColumn: "description" },
+}
+```
+
+Only fields in this allow-list are synced back. The entity ID is parsed from the document name and used in a parameterized query.
+
+## Database model
+
+A single table stores the Yjs state for all collaborative documents:
+
+```
+core_collaborationdocument
+├── id              BIGINT PRIMARY KEY
+├── document_name   VARCHAR(500) UNIQUE, INDEXED
+├── state           BYTEA (Yjs binary state)
+└── updated_at      TIMESTAMP
+```
+
+The `state` column holds the complete Yjs CRDT state as a binary blob. On load, the server applies this update to a fresh `Y.Doc`. On store, it encodes the full document state and upserts the row.
+
+## Frontend integration
+
+### MarkdownEditor props
+
+The `MarkdownEditor` component accepts two optional props for collaboration:
+
+| Prop | Type | Description |
+|---|---|---|
+| `documentName` | `string \| undefined` | When provided, enables collaborative mode |
+| `userName` | `string \| undefined` | Display name for cursor labels (reserved for future use) |
+
+### Collaborative mode vs standard mode
+
+| Behavior | Standard mode | Collaborative mode |
+|---|---|---|
+| Content source | `content` prop | Yjs document (loaded via Hocuspocus) |
+| Persistence | `onChange` → debounced PATCH | Hocuspocus → PostgreSQL |
+| Undo/redo | TipTap history | Yjs undo manager |
+| Multi-user sync | None (last writer wins) | CRDT merge via WebSocket |
+
+When `documentName` is not provided, the editor behaves exactly as before — local TipTap with the `content` prop and `onChange` callback.
+
+### WebSocket URL
+
+The frontend connects to `ws://localhost:8001` by default. This can be overridden with the `VITE_COLLAB_WS_URL` environment variable for production deployments.
+
+## Running locally
+
+Start all three services:
+
+```bash
+# Terminal 1 — Django backend
+cd backend && ./venv/bin/python manage.py runserver
+
+# Terminal 2 — Vite frontend
+cd frontend && npm run dev
+
+# Terminal 3 — Hocuspocus collab server
+cd collab && npm run dev
+```
+
+To verify collaboration is working, open the same session or decision in two browser tabs and type in the markdown field — edits should appear in both tabs in real time.
+
+## Known limitations
+
+- **No cursor labels** — the `CollaborationCursor` extension is incompatible with TipTap v3's Yjs binding (`@tiptap/y-tiptap` vs `y-prosemirror`). Text sync works, but you do not see other users' cursor positions. This will be re-added when TipTap ships a compatible v3 cursor extension.
+- **No offline support** — if the Hocuspocus server is unreachable, the editor will not load content in collaborative mode. A fallback to database mode is planned.
+- **No conflict resolution UI** — Yjs CRDTs merge automatically, so conflicts are resolved at the character level without user intervention. This is generally desirable but means there is no "accept/reject" flow for conflicting edits.

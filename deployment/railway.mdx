@@ -16,13 +16,63 @@ Connect the Railway project to the `paulvanderheijden/vector` GitHub repository.
 
 ## PostgreSQL
 
-Add the Railway Postgres plugin to the project. Railway auto-injects `DATABASE_URL` as a variable available to all services.
+Railway provides managed PostgreSQL as a built-in database service. Each environment gets its own isolated Postgres instance.
 
-Reference it in both backend and collab services using Railway's variable references:
+### Adding the database
+
+1. In the Railway project dashboard, click **+ New** → **Database** → **Add PostgreSQL**
+2. Railway provisions a Postgres instance and exposes connection variables automatically
+
+### Connection variables
+
+Railway generates several variables on the Postgres service. The most important is `DATABASE_URL`, which contains the full connection string.
+
+Reference it in the backend and collab services using Railway's variable references:
 
 ```
 DATABASE_URL = ${{Postgres.DATABASE_URL}}
 ```
+
+Other available variables (auto-generated, rarely needed directly):
+
+| Variable | Example |
+|---|---|
+| `PGHOST` | `roundhouse.proxy.rlwy.net` |
+| `PGPORT` | `28456` |
+| `PGUSER` | `postgres` |
+| `PGPASSWORD` | (auto-generated) |
+| `PGDATABASE` | `railway` |
+
+### Django configuration
+
+The backend reads `DATABASE_URL` using `dj-database-url` in `settings.py`:
+
+```python
+import dj_database_url
+
+DATABASES = {
+    "default": dj_database_url.config(default="sqlite:///db.sqlite3")
+}
+```
+
+This falls back to SQLite locally when `DATABASE_URL` is not set.
+
+### Backups
+
+Railway Postgres includes automatic daily backups with 7-day retention. For additional safety:
+
+- Enable **point-in-time recovery** in the Postgres service settings (available on Pro plan)
+- Before destructive migrations, create a manual backup via the Railway dashboard
+
+### Seeding
+
+After the first deploy to a new environment, run the seed command via Railway CLI:
+
+```bash
+railway run -s backend python manage.py seed
+```
+
+This populates the database with mock data (15 users, 6 circles, 31 decisions, 37 commitments, 18 sessions, 27 updates).
 
 ## Backend service (Django)
 

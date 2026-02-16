@@ -53,7 +53,7 @@ POST /auth/v1/login/
 |---|---|---|
 | `POST` | `/auth/v1/login/` | Email + password → JWT tokens + workspaces |
 | `POST` | `/auth/v1/logout/` | Blacklist refresh token |
-| `GET` | `/auth/v1/me/` | Current user info |
+| `GET, PATCH` | `/auth/v1/me/` | Current user info (GET) / update preferences (PATCH) |
 | `GET` | `/auth/v1/workspaces/` | User's workspaces with roles |
 | `POST` | `/auth/v1/workspaces/switch/` | Set active workspace |
 | `POST` | `/auth/v1/token/` | SimpleJWT token obtain (standard) |
@@ -69,6 +69,9 @@ class User(AbstractUser):
     email = models.EmailField(unique=True)
     job_title = models.CharField(max_length=255, blank=True, default="")
     avatar_url = models.URLField(max_length=500, blank=True, default="")
+    ui_language = models.CharField(
+        max_length=5, choices=[("en", "English"), ("nl", "Dutch")], default="en"
+    )
     USERNAME_FIELD = "email"
     REQUIRED_FIELDS = []
 

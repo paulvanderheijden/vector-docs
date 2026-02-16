@@ -21,6 +21,7 @@ description: "Overview of all screens in the Vector frontend."
 | **Initiative Detail** | `/initiatives/:initiativeId` | `InitiativeDetail` | Initiative overview with icon picker, editable properties, and projects table |
 | **Projects List** | `/projects` | `ProjectsList` | Projects grouped by initiative, filterable by health |
 | **Project Detail** | `/projects/:projectId` | `ProjectDetail` | Project detail with health, visibility, decisions, and commitments |
+| **Settings** | `/settings` | `Settings` | User settings page with language preference |
 
 ## Screen details
 
@@ -148,3 +149,11 @@ Execution detail for a project. Single scrollable page with decisions and commit
 Right sidebar has: Properties, Signals (open commitments, rolled count, recent decisions), and People (private projects only — owner, subscribers, invite selector).
 
 Follow/Unfollow button in header for public projects where user is not the owner.
+
+### Settings
+
+User preferences page. Currently contains a single setting:
+
+- **Language** — dropdown to switch the UI language between English and Dutch. On change, the selection is persisted to the backend (`PATCH /auth/v1/me/` with `ui_language`) and applied immediately via `i18n.changeLanguage()`. The language preference survives page refreshes — on login the frontend reads `ui_language` from the `/me` response and syncs it.
+
+Layout: `max-w-[800px] mx-auto`, consistent with other settings-style pages.

@@ -135,9 +135,42 @@ Return the current user's profile and active workspace.
   "id": 1,
   "email": "matt@mews.com",
   "name": "Matt Welle",
-  "active_workspace": "mews"
+  "active_workspace": "mews",
+  "ui_language": "en"
 }
 ```
+
+---
+
+### `PATCH /auth/v1/me/`
+
+Update the current user's profile. Currently supports changing the UI language.
+
+**Auth:** Required
+
+**Request:**
+
+```json
+{
+  "ui_language": "nl"
+}
+```
+
+**Response (200):**
+
+```json
+{
+  "id": 1,
+  "email": "matt@mews.com",
+  "name": "Matt Welle",
+  "active_workspace": "mews",
+  "ui_language": "nl"
+}
+```
+
+| Field | Type | Values |
+|---|---|---|
+| `ui_language` | string | `"en"` (English) or `"nl"` (Dutch) |
 
 ---
 
@@ -477,7 +510,7 @@ These replace the session's linked decisions/commitments and set their display o
   "status": "active",
   "completed_project_count": 0,
   "project_count": 3,
-  "worst_health": "at-risk"
+  "health": "at-risk"
 }
 ```
 

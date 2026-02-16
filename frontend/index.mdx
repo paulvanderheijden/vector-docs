@@ -16,6 +16,7 @@ This section covers the technical architecture and implementation details of the
 | **Rich Text Editor** | TipTap (with tiptap-markdown for serialization) |
 | **Drag & Drop** | @dnd-kit |
 | **Icons** | Lucide React |
+| **i18n** | react-i18next + i18next (bundled JSON, EN + NL) |
 | **Build** | Vite 7 |
 
 ## Project structure
@@ -27,11 +28,17 @@ src/
 ├── components/
 │   ├── ui/              # shadcn primitives (button, badge, data-table, etc.)
 │   └── *.tsx            # Shared feature components (28 total)
-├── pages/               # One file per screen (13 total)
+├── i18n/
+│   ├── index.ts         # i18next config (bundled resources, fallback to "en")
+│   ├── en.json          # English translations
+│   └── nl.json          # Dutch translations
+├── pages/               # One file per screen (15 total)
 ├── hooks/               # usePageHeader, use-mobile
 └── lib/
-    ├── mock-data.ts       # Decisions, commitments, circles, sessions, people
-    ├── projects-store.ts  # Initiatives, projects (separate store)
+    ├── api.ts             # Axios client with JWT interceptor
+    ├── auth.ts            # login, logout, getMe, updateMe, getWorkspaces
+    ├── auth-context.tsx   # AuthProvider + useAuth hook
+    ├── services/          # React Query hooks (people, circles, decisions, etc.)
     ├── workspace-context.tsx # Workspace provider + useWorkspace hook
     └── utils.ts           # cn() classname helper
 ```
@@ -48,9 +55,9 @@ src/
 
 ## Key architecture decisions
 
-- **No global state library** — pages use local `useState` with mock data imports. Property overrides are tracked per-page via a `Record<string, string>` pattern (`get`/`set` helpers).
-- **Two data stores** — `mock-data.ts` for decisions/commitments/circles/sessions, `projects-store.ts` for initiatives/projects. These will converge when the backend is connected.
-- **Multi-workspace context** — `WorkspaceProvider` stores the active workspace ID in `localStorage` and exposes it via `useWorkspace()` hook. All list pages filter data by `activeWorkspaceId`. ID-based lookups (detail pages) remain global — IDs are unique across workspaces.
+- **React Query for server state** — all data fetching uses per-entity hooks (`useDecisions`, `useCircles`, etc.) backed by React Query. No local mock data stores.
+- **Multi-workspace context** — `WorkspaceProvider` stores the active workspace slug and exposes it via `useWorkspace()` hook. All API calls include the workspace slug in the URL path.
+- **i18n with react-i18next** — all UI strings use `t()` calls with flat dot-separated keys (e.g. `sidebar.inbox`, `decision.status`). Translations are bundled as JSON. The user's language preference is stored on the backend (`User.ui_language`) and synced on login.
 - **Page header via Outlet context** — pages don't render their own headers. Instead they call `usePageHeader()` which passes header JSX up to the App shell via React Router's Outlet context. This keeps the sticky header outside the scroll area.
 - **Detail sidebar is per-page** — each detail page renders its own fixed-position `<aside>`. There is no shared DetailSidebar wrapper component; only the inner `SidebarSection` and `PropertiesRow` primitives are shared.
 
