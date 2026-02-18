@@ -149,10 +149,11 @@ GET  /api/v1/workspaces/{workspace_slug}/decisions/{id}/
 
 The `WorkspaceScopedViewSetMixin` handles access control, data scoping, and serializer context:
 
-1. **`get_workspace()`** — resolves the workspace slug from the URL and verifies the authenticated user has an active `WorkspaceMember` record. Returns 404 if not a member.
-2. **`get_queryset()`** — auto-filters to only return rows belonging to the resolved workspace.
+1. **`get_workspace()`** — resolves the workspace slug from the URL and verifies the authenticated user has an active `WorkspaceMember` record. Returns 404 if not a member. The result is cached on the viewset instance for the duration of the request to avoid redundant queries.
+2. **`get_queryset()`** — auto-filters to only return rows belonging to the resolved workspace. Soft-deleted records (`deleted_at IS NOT NULL`) are excluded by default via the `WorkspaceScopedManager`.
 3. **`get_serializer_context()`** — passes the resolved workspace into the serializer context, enabling FK field scoping.
 4. **`perform_create()`** — auto-sets the workspace FK on create.
+5. **`perform_destroy()`** — performs a soft delete by setting `deleted_at` instead of removing the row.
 
 ```python
 class DecisionViewSet(WorkspaceScopedViewSetMixin, viewsets.ModelViewSet):
@@ -162,6 +163,10 @@ class DecisionViewSet(WorkspaceScopedViewSetMixin, viewsets.ModelViewSet):
 ```
 
 This ensures that every viewset inheriting the mixin can only see and create data within the authenticated user's workspace — no cross-tenant leaks.
+
+### Permission caching
+
+All permission classes (`HasWorkspaceAccess`, `IsWorkspaceAdmin`, `IsAdminOrReadOnly`) share a single `_get_workspace_member()` helper that caches the `WorkspaceMember` lookup on the request object. This avoids redundant database queries when multiple permission classes are applied to the same viewset — the membership is queried once per request and reused.
 
 ### Role-based write authorization
 
@@ -222,7 +227,14 @@ class WorkspaceMember(models.Model):
 
 ### Queryset-level scoping
 
-For cases outside viewsets (e.g., management commands, signals), the `WorkspaceScopedManager` provides `.for_user()` filtering:
+For cases outside viewsets (e.g., management commands, signals), the `WorkspaceScopedManager` provides `.for_user()` filtering. The default queryset automatically excludes soft-deleted records (`deleted_at IS NOT NULL`). Additional manager methods are available for admin and recovery use cases:
+
+| Method | Returns |
+|---|---|
+| `objects.all()` | Active (non-deleted) records only |
+| `objects.for_user(user)` | Active records in the user's workspaces |
+| `objects.all_with_deleted()` | All records including soft-deleted |
+| `objects.only_deleted()` | Only soft-deleted records |
 
 ```python
 class WorkspaceScopedQuerySet(models.QuerySet):

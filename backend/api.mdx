@@ -258,6 +258,10 @@ Refresh an expired access token using a valid refresh token.
 
 Domain endpoints follow a standard REST pattern, scoped to a workspace via the URL slug. All endpoints require authentication. Querysets are automatically scoped to the workspace via `WorkspaceScopedViewSetMixin`, which also verifies the user has an active membership in the workspace. `DELETE` operations require the `admin` role — regular members receive a `403 Forbidden` response.
 
+### Soft delete
+
+All `DELETE` requests perform a **soft delete** — the record's `deleted_at` timestamp is set rather than removing the row from the database. Soft-deleted records are automatically excluded from all API responses. This preserves data integrity, enables future recovery, and maintains referential consistency for related entities. The response remains `204 No Content`, so the behavior is transparent to API consumers.
+
 ### URL pattern
 
 ```
