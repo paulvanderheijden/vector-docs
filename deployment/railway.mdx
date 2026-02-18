@@ -119,6 +119,14 @@ When `DEBUG=False`, Django automatically enables production security headers:
 
 These are configured in `settings.py` and gated behind `not DEBUG` so local development is unaffected.
 
+A custom `SecurityHeadersMiddleware` adds headers to all responses (both dev and prod):
+
+| Header | Value |
+|---|---|
+| `Content-Security-Policy` | `default-src 'none'; frame-ancestors 'none'` |
+| `Referrer-Policy` | `strict-origin-when-cross-origin` |
+| `Permissions-Policy` | `camera=(), microphone=(), geolocation=()` |
+
 ### Static files
 
 The backend uses **WhiteNoise** (already in `requirements.txt`) to serve static files. `collectstatic` runs as part of the build command.

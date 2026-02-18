@@ -43,8 +43,8 @@ POST /auth/v1/login/
 |---|---|
 | Access token lifetime | 30 minutes |
 | Refresh token lifetime | 7 days |
-| Token rotation | Disabled |
-| Blacklisting | Enabled (on logout) |
+| Token rotation | Enabled — each refresh returns a new refresh token |
+| Blacklisting | Enabled — old refresh tokens are blacklisted after rotation |
 | Auth header | `Authorization: Bearer <token>` |
 
 ### Rate limiting
