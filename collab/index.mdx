@@ -92,14 +92,16 @@ The Hocuspocus server runs as a separate Node.js process in the `collab/` direct
 | Environment variable | Default | Description |
 |---|---|---|
 | `PORT` | `8001` | WebSocket server port |
-| `JWT_SECRET` | Django dev default | Must match Django's `SECRET_KEY` |
+| `JWT_SECRET` | **Required** (no default) | Must match Django's `SECRET_KEY` |
 | `DATABASE_URL` | `postgresql://localhost:5432/vector` | Same PostgreSQL database as Django |
 
-### Authentication
+### Authentication & authorization
 
 Hocuspocus validates the JWT access token on every WebSocket connection using the same HS256 secret as Django's SimpleJWT. The token is sent by the frontend's `HocuspocusProvider` via the `token` option, which calls `getAccessToken()` from the auth module.
 
-If authentication fails, the WebSocket connection is rejected.
+After token verification, the server extracts the workspace slug from the document name and queries `authentication_workspacemember` to confirm the user is an **active member** of that workspace. If either check fails, the WebSocket connection is rejected.
+
+The `onStoreDocument` hook also scopes database updates to the correct workspace, preventing cross-tenant writes even if a document name were manipulated.
 
 ### Markdown extraction
 
