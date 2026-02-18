@@ -70,6 +70,7 @@ Throttle rates are configured in `REST_FRAMEWORK["DEFAULT_THROTTLE_RATES"]` in s
 | `GET` | `/auth/v1/workspaces/` | User's workspaces with roles |
 | `POST` | `/auth/v1/workspaces/switch/` | Set active workspace |
 | `POST` | `/auth/v1/token/refresh/` | SimpleJWT token refresh |
+| `POST` | `/auth/v1/verify-email/<token>/` | Verify email address |
 
 ### User model
 
@@ -79,6 +80,7 @@ The custom `User` extends `AbstractUser` with `username = None` and `USERNAME_FI
 class User(AbstractUser):
     username = None
     email = models.EmailField(unique=True)
+    is_verified = models.BooleanField(default=False)
     job_title = models.CharField(max_length=255, blank=True, default="")
     avatar_url = models.URLField(max_length=500, blank=True, default="")
     ui_language = models.CharField(
@@ -105,6 +107,10 @@ class User(AbstractUser):
 ### Password validation
 
 Django's `AUTH_PASSWORD_VALIDATORS` are enforced on all account creation paths, including invite-accept signup. The `validate_password()` function is called explicitly before `create_user()` to ensure passwords meet minimum length, complexity, and commonality requirements. Invalid passwords return a `400` with descriptive error messages.
+
+### Email verification
+
+New accounts created via invite-accept receive a verification email with a unique token link. The `is_verified` flag on the User model tracks verification status. Verification is completed via `POST /auth/v1/verify-email/<token>/`, which sets `is_verified = True` and clears the token. The `/auth/v1/me/` endpoint includes `is_verified` in its response so the frontend can prompt unverified users.
 
 ### Future: WorkOS for enterprise SSO
 
