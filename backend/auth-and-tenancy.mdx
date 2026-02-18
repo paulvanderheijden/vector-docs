@@ -108,6 +108,20 @@ class User(AbstractUser):
 
 Django's `AUTH_PASSWORD_VALIDATORS` are enforced on all account creation paths, including invite-accept signup. The `validate_password()` function is called explicitly before `create_user()` to ensure passwords meet minimum length, complexity, and commonality requirements. Invalid passwords return a `400` with descriptive error messages.
 
+### Transactional emails
+
+Vector sends transactional emails via [Resend](https://resend.com), configured with the `RESEND_API_KEY` environment variable. If the key is empty, email sending is silently skipped (useful in local development).
+
+Email HTML is rendered from **Django templates** in `authentication/templates/emails/`:
+
+| Template | Purpose |
+|---|---|
+| `base.html` | Shared table-based layout (480px, system font stack, "Sent by Vector" footer) |
+| `invitation.html` | Workspace invitation — extends base |
+| `verification.html` | Email verification link — extends base |
+
+All user-supplied values are auto-escaped by Django's template engine. The shared `_send_email()` helper in `authentication/email.py` handles API-key checks, template rendering, and Resend delivery.
+
 ### Email verification
 
 New accounts created via invite-accept receive a verification email with a unique token link. The `is_verified` flag on the User model tracks verification status. Verification is completed via `POST /auth/v1/verify-email/<token>/`, which sets `is_verified = True` and clears the token. The `/auth/v1/me/` endpoint includes `is_verified` in its response so the frontend can prompt unverified users.
