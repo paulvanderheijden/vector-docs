@@ -66,11 +66,16 @@ Railway Postgres includes automatic daily backups with 7-day retention. For addi
 
 ### Seeding
 
-After the first deploy to a new environment, run the seed command via Railway CLI:
+After the first deploy to a new environment, run the seed command locally using the **public** Postgres URL (found on the Postgres service's Variables tab as `DATABASE_PUBLIC_URL`):
 
 ```bash
-railway run -s backend python manage.py seed
+cd backend
+DATABASE_URL="<DATABASE_PUBLIC_URL>" python manage.py seed
 ```
+
+<Note>
+  `railway run` injects environment variables but runs locally — the internal hostname (`postgres.railway.internal`) is not resolvable from your machine. Use the public URL instead.
+</Note>
 
 This populates the database with mock data (15 users, 6 circles, 31 decisions, 37 commitments, 18 sessions, 27 updates).
 
@@ -81,12 +86,13 @@ This populates the database with mock data (15 users, 6 circles, 31 decisions, 3
 | Setting | Value |
 |---|---|
 | Root directory | `/backend` |
-| Build command | `pip install -r requirements.txt && python manage.py collectstatic --noinput && python manage.py migrate` |
+| Build command | `pip install -r requirements.txt && python manage.py collectstatic --noinput` |
+| Pre-deploy command | `python manage.py migrate` |
 | Start command | `gunicorn vector.wsgi:application --bind 0.0.0.0:$PORT` |
 
-<Note>
-  `gunicorn` must be added to `requirements.txt` before deploying. It is not included in the current development dependencies.
-</Note>
+<Warning>
+  `migrate` must run as a **pre-deploy command**, not in the build command. The internal Postgres hostname (`postgres.railway.internal`) is only resolvable at runtime, not during the build phase.
+</Warning>
 
 ### Environment variables
 
@@ -95,9 +101,23 @@ This populates the database with mock data (15 users, 6 circles, 31 decisions, 3
 | `DATABASE_URL` | `${{Postgres.DATABASE_URL}}` | Auto from Railway Postgres plugin |
 | `SECRET_KEY` | (generate a strong random key) | Used for Django signing and JWT |
 | `DEBUG` | `False` | Always `False` in deployed environments |
-| `ALLOWED_HOSTS` | `*.up.railway.app,vector.app` | Comma-separated, include custom domains |
+| `ALLOWED_HOSTS` | `.up.railway.app` | Django subdomain wildcard (dot prefix, not `*`) |
 | `FRONTEND_URL` | `https://vector.up.railway.app` | Used for CORS `Access-Control-Allow-Origin` |
 | `RESEND_API_KEY` | (from Resend dashboard) | For transactional emails |
+
+### Security headers
+
+When `DEBUG=False`, Django automatically enables production security headers:
+
+| Header | Setting | Value |
+|---|---|---|
+| `Strict-Transport-Security` | `SECURE_HSTS_SECONDS` | 1 year, includes subdomains, preload |
+| `X-Content-Type-Options: nosniff` | `SECURE_CONTENT_TYPE_NOSNIFF` | `True` |
+| SSL redirect | `SECURE_SSL_REDIRECT` | `True` |
+| Proxy SSL header | `SECURE_PROXY_SSL_HEADER` | `X-Forwarded-Proto: https` (Railway's proxy) |
+| Secure cookies | `SESSION_COOKIE_SECURE` / `CSRF_COOKIE_SECURE` | `True` |
+
+These are configured in `settings.py` and gated behind `not DEBUG` so local development is unaffected.
 
 ### Static files
 
@@ -111,9 +131,7 @@ The backend uses **WhiteNoise** (already in `requirements.txt`) to serve static 
 |---|---|
 | Root directory | `/frontend` |
 | Build command | `npm install && npm run build` |
-| Output directory | `dist` |
-
-Railway's Nixpacks builder detects the Vite project and serves the `dist` folder as a static site.
+| Start command | `npx serve dist -s -l $PORT` |
 
 ### Environment variables
 
@@ -125,16 +143,6 @@ Railway's Nixpacks builder detects the Vite project and serves the `dist` folder
 <Warning>
   Vite environment variables are **build-time only**. They are baked into the JavaScript bundle during `npm run build`. Changing them requires a redeploy.
 </Warning>
-
-### Code change required
-
-The frontend's Axios client (`src/lib/api.ts`) must read the API URL from the environment:
-
-```typescript
-const API_BASE = import.meta.env.VITE_API_URL ?? "http://localhost:8000"
-```
-
-This allows the same codebase to work locally (fallback to `localhost:8000`) and in Railway (reads the injected `VITE_API_URL`).
 
 ## Collab service (Node.js)
 

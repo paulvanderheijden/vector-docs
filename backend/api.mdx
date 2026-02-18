@@ -49,6 +49,10 @@ Standard HTTP status codes:
 | `404` | Not found or access denied |
 | `429` | Too many requests — rate limit exceeded |
 
+### Input sanitization
+
+All rich text fields (`description`, `discussion`, `notes`, `content`) are sanitized server-side using [nh3](https://github.com/messense/nh3) to strip HTML tags. These fields store markdown — raw HTML is never allowed. Sanitization runs in each serializer's `validate_<field>` method before data reaches the database.
+
 ---
 
 ## Auth endpoints
