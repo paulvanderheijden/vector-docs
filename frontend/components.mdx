@@ -180,7 +180,7 @@ All editable fields on detail pages persist changes to the backend via PATCH. Th
 **Timing by field type:**
 - **TextField** (titles, descriptions) — fires `onChange` on blur → immediate PATCH
 - **StatusField, PersonField, DateField, CircleField** — fire on select → immediate PATCH
-- **MarkdownEditor** (TipTap) — fires `onChange` on every keystroke → debounced PATCH via `useDebouncedSave` hook (800ms, flushes on unmount)
+- **MarkdownEditor** (TipTap) — fires `onChange` on every keystroke → debounced PATCH via `useDebouncedSave` hook (800ms, flushes on unmount). The `tiptap-markdown` extension is configured with `html: false` to prevent raw HTML in markdown from being rendered as live DOM (XSS prevention).
 
 **FK writes:** The backend expects `*Id` fields for foreign key writes (e.g. `ownerId`, `sponsorId`, `circleId`) but returns nested objects on read. Each service file exports a `*Patch` type with the correct write-side field names.
 

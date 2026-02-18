@@ -36,9 +36,9 @@ Most variables are the same across environments. Key differences:
 | `ALLOWED_HOSTS` | `vector.app,*.up.railway.app` | `*.up.railway.app` | `*.up.railway.app` |
 | `FRONTEND_URL` | `https://app.vector.com` | `https://vector-acc.up.railway.app` | `https://vector-demo.up.railway.app` |
 
-<Note>
-  Every environment gets its own `SECRET_KEY`. Never share keys across environments.
-</Note>
+<Warning>
+  `SECRET_KEY` is **required** — the backend will crash on startup if it is not set. There is no fallback value. Every environment must have its own unique key.
+</Warning>
 
 ## Database isolation
 
