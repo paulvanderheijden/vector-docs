@@ -102,6 +102,10 @@ class User(AbstractUser):
         return self.email[0].upper()
 ```
 
+### Password validation
+
+Django's `AUTH_PASSWORD_VALIDATORS` are enforced on all account creation paths, including invite-accept signup. The `validate_password()` function is called explicitly before `create_user()` to ensure passwords meet minimum length, complexity, and commonality requirements. Invalid passwords return a `400` with descriptive error messages.
+
 ### Future: WorkOS for enterprise SSO
 
 WorkOS will be added when enterprise customers need SAML/SSO. The migration path:
