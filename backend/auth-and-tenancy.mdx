@@ -111,11 +111,12 @@ POST /api/v1/workspaces/{workspace_slug}/decisions/
 GET  /api/v1/workspaces/{workspace_slug}/decisions/{id}/
 ```
 
-The `WorkspaceScopedViewSetMixin` handles both access control and data scoping:
+The `WorkspaceScopedViewSetMixin` handles access control, data scoping, and serializer context:
 
 1. **`get_workspace()`** — resolves the workspace slug from the URL and verifies the authenticated user has an active `WorkspaceMember` record. Returns 404 if not a member.
 2. **`get_queryset()`** — auto-filters to only return rows belonging to the resolved workspace.
-3. **`perform_create()`** — auto-sets the workspace FK on create.
+3. **`get_serializer_context()`** — passes the resolved workspace into the serializer context, enabling FK field scoping.
+4. **`perform_create()`** — auto-sets the workspace FK on create.
 
 ```python
 class DecisionViewSet(WorkspaceScopedViewSetMixin, viewsets.ModelViewSet):
@@ -125,6 +126,10 @@ class DecisionViewSet(WorkspaceScopedViewSetMixin, viewsets.ModelViewSet):
 ```
 
 This ensures that every viewset inheriting the mixin can only see and create data within the authenticated user's workspace — no cross-tenant leaks.
+
+### Serializer FK scoping
+
+All write serializers (`DecisionSerializer`, `CommitmentSerializer`, `SessionSerializer`, `UpdateSerializer`) restrict `PrimaryKeyRelatedField` querysets to the current workspace via the `_scope_fk_querysets()` helper. This prevents a user from referencing objects belonging to another workspace when creating or updating entities (e.g., setting `circle_id` to a circle from a different workspace). The scoping is applied automatically in each serializer's `__init__` using the workspace from the serializer context.
 
 A standalone `HasWorkspaceAccess` permission class also exists for use cases outside the mixin.
 
