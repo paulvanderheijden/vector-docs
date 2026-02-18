@@ -47,6 +47,19 @@ POST /auth/v1/login/
 | Blacklisting | Enabled (on logout) |
 | Auth header | `Authorization: Bearer <token>` |
 
+### Rate limiting
+
+DRF throttling is applied globally and with stricter limits on sensitive endpoints:
+
+| Scope | Rate | Applied to |
+|---|---|---|
+| `anon` | 60/minute | All unauthenticated requests (default) |
+| `user` | 300/minute | All authenticated requests (default) |
+| `login` | 5/minute | `POST /auth/v1/login/` |
+| `invite_accept` | 10/minute | `POST /auth/v1/invite/<token>/accept/` |
+
+Throttle rates are configured in `REST_FRAMEWORK["DEFAULT_THROTTLE_RATES"]` in settings. Login and invite-accept use `ScopedRateThrottle` subclasses for per-endpoint limits.
+
 ### Auth endpoints
 
 | Method | Endpoint | Description |
