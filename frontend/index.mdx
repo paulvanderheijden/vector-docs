@@ -69,13 +69,7 @@ All workspace page components are **lazy-loaded** via `React.lazy` in `main.tsx`
 
 ### Memoization
 
-| Technique | Where | Purpose |
-|---|---|---|
-| `React.memo` on Field components | `StatusField`, `PersonField`, `DateField`, `CircleField`, `SessionField`, `DecisionField`, `HealthField` | Prevent re-renders in table cells when props haven't changed |
-| `React.memo` on list rows | `ListRow` in `DatabaseView` | Avoid recreating click handlers per row on every render |
-| `React.memo` on sidebar items | `CircleNavItem` in `AppSidebar` | Skip heavy circle subtree re-renders on navigation |
-| `useMemo` for column definitions | `DecisionsTable`, `CommitmentsTable` | Rebuild column arrays only when configuration props change |
-| `useMemo` for context values | `WorkspaceProvider` | Prevent all context consumers from re-rendering on unrelated parent changes |
+`WorkspaceProvider` wraps its context value in `useMemo` to prevent all consumers from re-rendering on unrelated parent state changes. Additional `React.memo` / `useMemo` should only be added after profiling with React DevTools confirms a measurable bottleneck.
 
 ### Mutation cache strategy
 
