@@ -47,6 +47,7 @@ Standard HTTP status codes:
 | `400` | Bad request — missing or invalid fields |
 | `401` | Unauthorized — missing or expired token |
 | `404` | Not found or access denied |
+| `429` | Too many requests — rate limit exceeded |
 
 ---
 
@@ -59,6 +60,7 @@ Auth endpoints are user-level and do not require a workspace slug.
 Authenticate with email and password. Returns JWT tokens and the user's workspaces.
 
 **Auth:** None
+**Rate limit:** 5 requests/minute per IP
 
 **Request:**
 
@@ -88,6 +90,7 @@ Authenticate with email and password. Returns JWT tokens and the user's workspac
 |---|---|---|
 | `400` | `{"error": "Email and password are required"}` | Missing field |
 | `401` | `{"error": "Invalid credentials"}` | Wrong email or password |
+| `429` | `{"detail": "Request was throttled. ..."}` | Rate limit exceeded |
 
 ---
 
