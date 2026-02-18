@@ -61,6 +61,30 @@ src/
 - **Page header via Outlet context** — pages don't render their own headers. Instead they call `usePageHeader()` which passes header JSX up to the App shell via React Router's Outlet context. This keeps the sticky header outside the scroll area.
 - **Detail sidebar is per-page** — each detail page renders its own fixed-position `<aside>`. There is no shared DetailSidebar wrapper component; only the inner `SidebarSection` and `PropertiesRow` primitives are shared.
 
+## Performance optimizations
+
+### Code splitting
+
+All workspace page components are **lazy-loaded** via `React.lazy` in `main.tsx`. Vite produces separate chunks per route, so the initial bundle only includes the shell (sidebar, header, router) plus the authentication pages. The `MarkdownEditor` (which pulls in Tiptap, Yjs, and Hocuspocus) is further isolated behind a `LazyMarkdownEditor` wrapper so editor dependencies are only loaded when an editor is first rendered.
+
+### Memoization
+
+| Technique | Where | Purpose |
+|---|---|---|
+| `React.memo` on Field components | `StatusField`, `PersonField`, `DateField`, `CircleField`, `SessionField`, `DecisionField`, `HealthField` | Prevent re-renders in table cells when props haven't changed |
+| `React.memo` on list rows | `ListRow` in `DatabaseView` | Avoid recreating click handlers per row on every render |
+| `React.memo` on sidebar items | `CircleNavItem` in `AppSidebar` | Skip heavy circle subtree re-renders on navigation |
+| `useMemo` for column definitions | `DecisionsTable`, `CommitmentsTable` | Rebuild column arrays only when configuration props change |
+| `useMemo` for context values | `WorkspaceProvider` | Prevent all context consumers from re-rendering on unrelated parent changes |
+
+### Mutation cache strategy
+
+All entity update mutations use `setQueryData` to write the API response directly into the React Query detail cache, avoiding a refetch for the single-entity view. List queries are still invalidated to ensure they stay fresh.
+
+### Token refresh deduplication
+
+The Axios response interceptor deduplicates concurrent 401 refresh attempts by sharing a single `refreshPromise`. Parallel requests that hit a 401 all await the same token refresh instead of each triggering their own.
+
 ## Sections
 
 <CardGroup cols={2}>
