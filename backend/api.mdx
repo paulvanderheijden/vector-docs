@@ -225,36 +225,6 @@ Set the user's active workspace. Updates `last_active_workspace` on the user rec
 
 ---
 
-### `POST /auth/v1/token/`
-
-Standard SimpleJWT token obtain endpoint. Takes email and password, returns access and refresh tokens.
-
-**Auth:** None
-
-**Request:**
-
-```json
-{
-  "email": "matt@mews.com",
-  "password": "..."
-}
-```
-
-**Response (200):**
-
-```json
-{
-  "access": "eyJhbGciOi...",
-  "refresh": "eyJhbGciOi..."
-}
-```
-
-<Note>
-  Prefer `/auth/v1/login/` over this endpoint — it returns workspace info alongside the tokens.
-</Note>
-
----
-
 ### `POST /auth/v1/token/refresh/`
 
 Refresh an expired access token using a valid refresh token.
