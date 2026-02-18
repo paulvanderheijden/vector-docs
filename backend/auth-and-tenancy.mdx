@@ -149,6 +149,17 @@ class DecisionViewSet(WorkspaceScopedViewSetMixin, viewsets.ModelViewSet):
 
 This ensures that every viewset inheriting the mixin can only see and create data within the authenticated user's workspace — no cross-tenant leaks.
 
+### Role-based write authorization
+
+The `IsAdminOrReadOnly` permission class is applied to all workspace-scoped viewsets via the mixin. It allows any authenticated member to read, create, and update resources, but restricts `DELETE` operations to workspace admins. This prevents accidental or malicious data destruction by regular members.
+
+| Operation | `member` | `admin` |
+|---|---|---|
+| Read (GET, HEAD, OPTIONS) | Allowed | Allowed |
+| Create (POST) | Allowed | Allowed |
+| Update (PUT, PATCH) | Allowed | Allowed |
+| Delete (DELETE) | Denied (403) | Allowed |
+
 ### Serializer FK scoping
 
 All write serializers (`DecisionSerializer`, `CommitmentSerializer`, `SessionSerializer`, `UpdateSerializer`) restrict `PrimaryKeyRelatedField` querysets to the current workspace via the `_scope_fk_querysets()` helper. This prevents a user from referencing objects belonging to another workspace when creating or updating entities (e.g., setting `circle_id` to a circle from a different workspace). The scoping is applied automatically in each serializer's `__init__` using the workspace from the serializer context.

@@ -252,7 +252,7 @@ Refresh an expired access token using a valid refresh token.
 
 ## Domain endpoints
 
-Domain endpoints follow a standard REST pattern, scoped to a workspace via the URL slug. All endpoints require authentication. Querysets are automatically scoped to the workspace via `WorkspaceScopedViewSetMixin`, which also verifies the user has an active membership in the workspace.
+Domain endpoints follow a standard REST pattern, scoped to a workspace via the URL slug. All endpoints require authentication. Querysets are automatically scoped to the workspace via `WorkspaceScopedViewSetMixin`, which also verifies the user has an active membership in the workspace. `DELETE` operations require the `admin` role — regular members receive a `403 Forbidden` response.
 
 ### URL pattern
 
