@@ -67,6 +67,25 @@ backend/
             └── seed.py          # Seed command for dev data
 ```
 
+## Performance
+
+### Query optimization
+
+Serializers are designed to work with the prefetch strategy defined in each viewset's `get_queryset()`:
+
+- **Use prefetched data** — serializer methods like `get_chair()`, `get_projects()`, and `get_decisions_detail()` iterate prefetched querysets (e.g. `obj.memberships.all()`) rather than issuing new queries. Calling `.filter()` or `.values_list()` on a related manager bypasses the prefetch cache and hits the database.
+- **DB aggregation over Python loops** — operations like `_next_ref()` use `MAX(CAST(SUBSTR(...)))` in a single query instead of fetching all records into Python.
+- **Annotated counts** — computed fields like `project_count`, `open_commitment_count`, and `active_decision_count` are annotated on the queryset in the viewset, not computed per-row in the serializer.
+
+### Pagination
+
+All list endpoints use DRF's `PageNumberPagination` with a default page size of 50. This caps the maximum number of records serialized per request.
+
+### Indexing
+
+- All `slug` fields have `db_index=True` (Django `SlugField` default) plus composite unique indexes via `unique_together = ("workspace", "slug")`.
+- Frequently filtered fields (`status`, `rolled`, `is_active`) have explicit `db_index=True`.
+
 ## Frontend integration
 
 The React app (in `frontend/`) authenticates via JWT and includes the token in every request. The frontend uses Axios with interceptors for JWT management and React Query for data fetching.

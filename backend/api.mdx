@@ -49,6 +49,30 @@ Standard HTTP status codes:
 | `404` | Not found or access denied |
 | `429` | Too many requests — rate limit exceeded |
 
+### Pagination
+
+All list endpoints return paginated responses using DRF's `PageNumberPagination` with a default page size of 50.
+
+**Response shape:**
+
+```json
+{
+  "count": 127,
+  "next": "https://api.example.com/api/v1/workspaces/mews/decisions/?page=2",
+  "previous": null,
+  "results": [ ... ]
+}
+```
+
+| Field | Type | Description |
+|---|---|---|
+| `count` | integer | Total number of records matching the query |
+| `next` | string \| null | URL for the next page, or `null` if this is the last page |
+| `previous` | string \| null | URL for the previous page, or `null` if this is the first page |
+| `results` | array | The page of records |
+
+Use the `page` query parameter to request a specific page: `?page=2`.
+
 ### Input sanitization
 
 All rich text fields (`description`, `discussion`, `notes`, `content`) are sanitized server-side using [nh3](https://github.com/messense/nh3) to strip HTML tags. These fields store markdown — raw HTML is never allowed. Sanitization runs in each serializer's `validate_<field>` method before data reaches the database.
