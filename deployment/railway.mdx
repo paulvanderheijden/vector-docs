@@ -88,7 +88,7 @@ This populates the database with mock data (15 users, 6 circles, 31 decisions, 3
 | Root directory | `/backend` |
 | Build command | `pip install -r requirements.txt && python manage.py collectstatic --noinput` |
 | Pre-deploy command | `python manage.py migrate` |
-| Start command | `gunicorn vector.wsgi:application --bind 0.0.0.0:$PORT` |
+| Start command | `gunicorn vector.wsgi:application` |
 
 <Warning>
   `migrate` must run as a **pre-deploy command**, not in the build command. The internal Postgres hostname (`postgres.railway.internal`) is only resolvable at runtime, not during the build phase.
@@ -104,6 +104,24 @@ This populates the database with mock data (15 users, 6 circles, 31 decisions, 3
 | `ALLOWED_HOSTS` | `.up.railway.app` | Django subdomain wildcard (dot prefix, not `*`) |
 | `FRONTEND_URL` | `https://vector.up.railway.app` | Used for CORS `Access-Control-Allow-Origin` |
 | `RESEND_API_KEY` | (from Resend dashboard) | For transactional emails |
+
+### Gunicorn configuration
+
+Gunicorn reads its settings from `backend/gunicorn.conf.py`, which is auto-discovered at startup. Key defaults:
+
+| Setting | Value | Override env var |
+|---|---|---|
+| Worker class | `gthread` (threaded) | — |
+| Workers | `2 × CPU cores + 1` | `WEB_CONCURRENCY` |
+| Threads per worker | `4` | `GUNICORN_THREADS` |
+| Bind | `0.0.0.0:$PORT` | `PORT` |
+| Request timeout | `30s` | — |
+
+The `gthread` worker class handles concurrent requests using threads within each worker process, which is well-suited for I/O-bound Django workloads (database queries, JSON serialization). On Railway with 1–2 vCPUs this results in 3–5 workers × 4 threads = 12–20 concurrent requests.
+
+<Note>
+  The default `sync` worker class processes requests sequentially per worker. With only 1 worker (gunicorn's default), parallel browser requests queue up and add hundreds of milliseconds of latency. Always use `gthread` or set `WEB_CONCURRENCY` to at least 3.
+</Note>
 
 ### Security headers
 
