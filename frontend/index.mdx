@@ -69,11 +69,23 @@ All workspace page components are **lazy-loaded** via `React.lazy` in `main.tsx`
 
 ### Memoization
 
-`WorkspaceProvider` wraps its context value in `useMemo` to prevent all consumers from re-rendering on unrelated parent state changes. Additional `React.memo` / `useMemo` should only be added after profiling with React DevTools confirms a measurable bottleneck.
+The codebase applies targeted memoization at three levels:
+
+- **Context stability** — `WorkspaceProvider` wraps its context value in `useMemo` and uses refs for values that shouldn't trigger re-renders (e.g. `pathname`), preventing cascade re-renders on navigation.
+- **Field components** — all `*Field` components used in table rows (`StatusField`, `PersonField`, `DateField`, `HealthField`, `CircleField`, `DecisionField`, `SessionField`) are wrapped in `React.memo`. These render N times per table, so memo prevents re-renders when the parent re-renders but the field's props haven't changed.
+- **Table columns** — `useMemo` wraps `makeColumns()` calls in `DecisionsTable` and `CommitmentsTable` so TanStack Table doesn't rebuild its column model on every render.
+- **List view rows** — `DatabaseView`'s `ListRow` component is memoized with `useCallback` click handlers, so rows only re-render when their item data changes.
+- **Derived data** — filter/sort results and computed values (e.g. `circleOptions`, `owners`, `initiativeMap`) are wrapped in `useMemo` in list pages to avoid recomputing on unrelated state changes.
+
+### React Query tuning
+
+- **`staleTime: 5 minutes`** — set globally on the `QueryClient`. Prevents background refetches during normal navigation. Data is still refetched on window focus and after mutations.
+- **`enabled` flags** — list hooks (`useSessions`, `useCommitments`) accept an `enabled` option so detail pages can skip fetches until prerequisite data loads. For example, `DecisionDetail` only fetches commitments once the decision has loaded.
+- **Narrow invalidation** — mutations use `refetchType: "none"` for list queries when only the detail cache needs updating (via `setQueryData`). Create mutations use `refetchType: "active"` so only visible lists refetch.
 
 ### Mutation cache strategy
 
-All entity update mutations use `setQueryData` to write the API response directly into the React Query detail cache, avoiding a refetch for the single-entity view. List queries are still invalidated to ensure they stay fresh.
+All entity update mutations use `setQueryData` to write the API response directly into the React Query detail cache, avoiding a refetch for the single-entity view. List queries are invalidated with `refetchType: "none"` so they refetch lazily on next access rather than immediately.
 
 ### Token refresh deduplication
 
