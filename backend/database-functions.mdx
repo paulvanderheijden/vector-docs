@@ -61,6 +61,24 @@ A scheduled command that would run daily and roll commitments whose due date has
 
 A management command (or Celery task, if needed) that sends notifications when specific events occur — e.g., a commitment is assigned, a decision is scheduled, or a session is closed. Not yet implemented.
 
+## Auto-set fields
+
+Some fields are automatically populated by the backend during state transitions. These are enforced in DRF serializers, not in model `save()` methods.
+
+### Decision
+
+| Trigger | Field set | Value | Notes |
+|---|---|---|---|
+| Status → `Requested` | `requested_date` | Current date | Only if not already set. Starts the age counter. |
+
+### Commitment
+
+_No auto-set fields yet. Planned: auto-roll when due date passes (see below)._
+
+<Note>
+Auto-set fields are **not returned as separate changelog events** — they happen silently alongside the action that triggers them. The triggering action (e.g. status change) is logged normally.
+</Note>
+
 ## Migration strategy
 
 All database changes are managed via Django migrations:
